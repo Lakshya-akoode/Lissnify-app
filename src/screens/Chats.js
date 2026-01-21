@@ -166,18 +166,21 @@ export default function ChatsScreen({ navigation, route }) {
       return;
     }
 
-    const { listenerName, connectionId, listenerUserId, roomId } = route.params;
+    const { listenerName, seekerName, connectionId, listenerUserId, seekerUserId, roomId } = route.params;
 
-    const listener = connectedListenersData.find((l) => {
+    // Try to find the user by various identifiers
+    const user = connectedListenersData.find((l) => {
       if (connectionId && l.connection_id === connectionId) return true;
       if (listenerUserId && l.user_id?.toString() === listenerUserId?.toString()) return true;
+      if (seekerUserId && l.user_id?.toString() === seekerUserId?.toString()) return true;
       if (listenerName && l.full_name === listenerName) return true;
+      if (seekerName && l.full_name === seekerName) return true;
       return false;
     });
 
-    if (listener) {
-      setRoomIdMap((prev) => ({ ...prev, [listener.connection_id]: roomId }));
-      onStartChat(listener, roomId);
+    if (user) {
+      setRoomIdMap((prev) => ({ ...prev, [user.connection_id]: roomId }));
+      onStartChat(user, roomId);
     }
   }, [route?.params, connectedListenersData]);
 
@@ -613,55 +616,57 @@ export default function ChatsScreen({ navigation, route }) {
               end={{ x: 1, y: 1 }}
               style={styles.gradientOverlay}
             >
+              {/* Chat Header */}
+              <View style={styles.chatHeader}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={handleCloseChat}
+                  activeOpacity={0.7}
+                >
+                  <ArrowLeft size={24} color="#FFF" />
+                </TouchableOpacity>
+                <View style={styles.chatHeaderInfo}>
+                  <View style={styles.chatHeaderAvatar}>
+                    <Text style={styles.chatHeaderAvatarText}>
+                      {listener?.listener_profile?.avatar || listener?.full_name?.charAt(0)?.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.chatHeaderText}>
+                    <Text style={styles.chatHeaderName}>{listener?.full_name}</Text>
+                    <Text style={styles.chatHeaderStatus}>
+                      {isConnected ? 'Online' : 'Offline'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.chatHeaderActions}>
+                  <TouchableOpacity
+                    style={styles.chatHeaderAction}
+                    onPress={() => Alert.alert('Feature coming soon')}
+                  >
+                    <Phone size={20} color="#FFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.chatHeaderAction}
+                    onPress={() => Alert.alert('Feature coming soon')}
+                  >
+                    <Video size={20} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <KeyboardAvoidingView
                 style={styles.keyboardView}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                enabled={true}
               >
-                {/* Chat Header */}
-                <View style={styles.chatHeader}>
-                  <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={handleCloseChat}
-                    activeOpacity={0.7}
-                  >
-                    <ArrowLeft size={24} color="#FFF" />
-                  </TouchableOpacity>
-                  <View style={styles.chatHeaderInfo}>
-                    <View style={styles.chatHeaderAvatar}>
-                      <Text style={styles.chatHeaderAvatarText}>
-                        {listener?.listener_profile?.avatar || listener?.full_name?.charAt(0)?.toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.chatHeaderText}>
-                      <Text style={styles.chatHeaderName}>{listener?.full_name}</Text>
-                      <Text style={styles.chatHeaderStatus}>
-                        {isConnected ? 'Online' : 'Offline'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.chatHeaderActions}>
-                    <TouchableOpacity
-                      style={styles.chatHeaderAction}
-                      onPress={() => Alert.alert('Feature coming soon')}
-                    >
-                      <Phone size={20} color="#FFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.chatHeaderAction}
-                      onPress={() => Alert.alert('Feature coming soon')}
-                    >
-                      <Video size={20} color="#FFF" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
                 {/* Messages */}
                 <ScrollView
                   ref={scrollViewRef}
                   style={styles.messagesContainer}
                   contentContainerStyle={styles.messagesContent}
                   showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
                 >
                   {messagesData.length === 0 ? (
                     <View style={styles.emptyMessages}>
@@ -843,6 +848,7 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
   menuButton: {
     position: 'absolute',
@@ -1102,7 +1108,7 @@ const styles = StyleSheet.create({
   messagesContent: {
     padding: 16,
     paddingBottom: 20,
-    width: '100%',
+    flexGrow: 1,
   },
   emptyMessages: {
     flex: 1,

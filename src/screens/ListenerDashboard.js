@@ -191,10 +191,12 @@ export default function ListenerDashboard({ navigation, route }) {
       if (rooms.success) {
         // Navigate to chat screen
         if (navigation) {
-          navigation.navigate('Chat', {
+          navigation.navigate('Chats', {
             roomId: rooms.data.id,
+            listenerName: seeker.full_name,
             seekerName: seeker.full_name,
             connectionId: seeker.connection_id,
+            listenerUserId: seeker.user_id,
           });
         }
       } else {

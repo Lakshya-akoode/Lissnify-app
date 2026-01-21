@@ -10,6 +10,8 @@ import {
   Alert,
   Platform,
   Image,
+  Animated,
+  Modal,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {
@@ -21,6 +23,9 @@ import {
   Menu,
   Phone,
   Globe,
+  CheckCircle,
+  XCircle,
+  X,
 } from 'lucide-react-native';
 import {
   listenerCategoryWise,
@@ -42,6 +47,8 @@ export default function CategoryListeners({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [connectedListenersList, setConnectedListenersList] = useState([]);
   const [connecting, setConnecting] = useState({});
+  const [notification, setNotification] = useState({ visible: false, type: 'success', message: '' });
+  const slideAnim = React.useRef(new Animated.Value(-200)).current;
 
   useEffect(() => {
     if (categorySlug || categoryId) {
@@ -112,11 +119,38 @@ export default function CategoryListeners({ navigation, route }) {
     );
   };
 
+  const showNotification = (type, message) => {
+    setNotification({ visible: true, type, message });
+    // Reset animation value
+    slideAnim.setValue(-200);
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start();
+
+    // Auto hide after 3.5 seconds
+    setTimeout(() => {
+      hideNotification();
+    }, 3500);
+  };
+
+  const hideNotification = () => {
+    Animated.timing(slideAnim, {
+      toValue: -200,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setNotification({ visible: false, type: 'success', message: '' });
+    });
+  };
+
   const handleConnect = async (listener) => {
     try {
       const listenerId = listener.l_id || listener.user_id;
       if (isListenerConnected(listenerId)) {
-        Alert.alert('Already Connected', 'You are already connected with this listener.');
+        showNotification('info', 'You are already connected with this listener.');
         return;
       }
 
@@ -124,14 +158,14 @@ export default function CategoryListeners({ navigation, route }) {
       const response = await sendConnectionRequest(listenerId);
 
       if (response.success) {
-        Alert.alert('Success', 'Connection request sent successfully!');
+        showNotification('success', 'Connection request sent successfully!');
         // Refresh connected listeners
         await fetchConnectedListeners();
       } else {
-        Alert.alert('Error', response.error || 'Failed to send connection request');
+        showNotification('error', response.error || 'Failed to send connection request');
       }
     } catch (error) {
-      Alert.alert('Error', 'Error sending connection request');
+      showNotification('error', 'Error sending connection request. Please try again.');
     } finally {
       setConnecting({ ...connecting, [listener.l_id || listener.user_id]: false });
     }
@@ -258,6 +292,60 @@ export default function CategoryListeners({ navigation, route }) {
 
   return (
     <View style={styles.container}>
+      {/* Custom Notification */}
+      {notification.visible && (
+        <Animated.View
+          style={[
+            styles.notificationContainer,
+            {
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={
+              notification.type === 'success'
+                ? ['#10B981', '#059669']
+                : notification.type === 'error'
+                ? ['#EF4444', '#DC2626']
+                : ['#3B82F6', '#2563EB']
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.notificationGradient}
+          >
+            <View style={styles.notificationContent}>
+              <View style={styles.notificationIconContainer}>
+                {notification.type === 'success' ? (
+                  <CheckCircle size={24} color="#FFF" />
+                ) : notification.type === 'error' ? (
+                  <XCircle size={24} color="#FFF" />
+                ) : (
+                  <UserCheck size={24} color="#FFF" />
+                )}
+              </View>
+              <View style={styles.notificationTextContainer}>
+                <Text style={styles.notificationTitle}>
+                  {notification.type === 'success'
+                    ? 'Success!'
+                    : notification.type === 'error'
+                    ? 'Error'
+                    : 'Info'}
+                </Text>
+                <Text style={styles.notificationMessage}>{notification.message}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={hideNotification}
+                style={styles.notificationCloseButton}
+                activeOpacity={0.7}
+              >
+                <X size={20} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      )}
+
       {/* Menu Button */}
       <TouchableOpacity
         style={styles.menuButton}
@@ -608,6 +696,61 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  notificationContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 16,
+    right: 16,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  notificationGradient: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  notificationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  notificationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  notificationTextContainer: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  notificationMessage: {
+    fontSize: 14,
+    color: '#FFF',
+    opacity: 0.95,
+    lineHeight: 20,
+  },
+  notificationCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
 });
 

@@ -84,7 +84,8 @@ export default function CommunityScreen({ navigation }) {
 
       const [categoriesRes, postsRes] = await Promise.all([
         getCategories(),
-        getCommunityPosts({ postType: userType, categoryId: selectedCategory }),
+        // Don't filter by postType - show all posts (listener and seeker)
+        getCommunityPosts({ categoryId: selectedCategory }),
       ]);
 
       if (categoriesRes.success && categoriesRes.data) {
@@ -269,45 +270,51 @@ export default function CommunityScreen({ navigation }) {
             </View>
 
             <View style={styles.createPostFooter}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <TouchableOpacity
-                  style={[
-                    styles.categoryChip,
-                    newPostCategory === null && styles.categoryChipActive,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => setNewPostCategory(null)}
+              <View style={styles.categoryChipsContainer}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryChipsScrollContent}
                 >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      newPostCategory === null && styles.categoryChipTextActive,
-                    ]}
-                  >
-                    No Category
-                  </Text>
-                </TouchableOpacity>
-                {categoriesData.map((category) => (
                   <TouchableOpacity
-                    key={category.id}
                     style={[
                       styles.categoryChip,
-                      newPostCategory === category.id && styles.categoryChipActive,
+                      newPostCategory === null && styles.categoryChipActive,
                     ]}
                     activeOpacity={0.8}
-                    onPress={() => setNewPostCategory(category.id)}
+                    onPress={() => setNewPostCategory(null)}
                   >
                     <Text
                       style={[
                         styles.categoryChipText,
-                        newPostCategory === category.id && styles.categoryChipTextActive,
+                        newPostCategory === null && styles.categoryChipTextActive,
                       ]}
                     >
-                      {category.name}
+                      No Category
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                  {categoriesData.map((category) => (
+                    <TouchableOpacity
+                      key={category.id}
+                      style={[
+                        styles.categoryChip,
+                        newPostCategory === category.id && styles.categoryChipActive,
+                      ]}
+                      activeOpacity={0.8}
+                      onPress={() => setNewPostCategory(category.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          newPostCategory === category.id && styles.categoryChipTextActive,
+                        ]}
+                      >
+                        {category.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
 
               <TouchableOpacity
                 style={styles.postButton}
@@ -611,6 +618,7 @@ const styles = StyleSheet.create({
   },
   createPostInputs: {
     flex: 1,
+    minWidth: 0, // Ensures proper flex behavior
   },
   titleInput: {
     backgroundColor: '#FFFFFF',
@@ -636,10 +644,15 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   createPostFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
     marginBottom: 16,
+    gap: 12,
+  },
+  categoryChipsContainer: {
+    width: '100%',
+  },
+  categoryChipsScrollContent: {
+    paddingRight: 4,
   },
   categoryChip: {
     borderRadius: 999,
@@ -663,7 +676,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   postButton: {
-    marginLeft: 12,
+    alignSelf: 'flex-end',
   },
   postButtonGradient: {
     flexDirection: 'row',
@@ -683,18 +696,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    gap: 8,
   },
   postingAsLabel: {
     fontSize: 13,
     color: '#6B7280',
-    marginRight: 8,
   },
   postingAsTag: {
     backgroundColor: '#FFF1DC',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginRight: 8,
   },
   postingAsTagText: {
     color: '#8B4513',
@@ -704,7 +716,6 @@ const styles = StyleSheet.create({
   postingAsCategory: {
     fontSize: 13,
     color: '#6B7280',
-    marginLeft: 4,
   },
   categoriesCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
@@ -728,10 +739,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
+    marginLeft: 8,
   },
   categoriesChips: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingRight: 4,
   },
   filterChip: {
     borderRadius: 999,
@@ -741,6 +754,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    minWidth: 60,
+    alignItems: 'center',
   },
   filterChipActive: {
     backgroundColor: '#CD853F',
@@ -821,7 +836,7 @@ const styles = StyleSheet.create({
   postHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   postAvatar: {
     width: 52,
@@ -838,18 +853,19 @@ const styles = StyleSheet.create({
   },
   postMeta: {
     flex: 1,
+    minWidth: 0, // Ensures proper text wrapping
   },
   postMetaTop: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     marginBottom: 8,
+    gap: 4,
   },
   postAuthor: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginRight: 6,
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -858,7 +874,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    marginRight: 6,
+    gap: 4,
   },
   verifiedBadgeText: {
     color: '#2563EB',
@@ -868,19 +884,16 @@ const styles = StyleSheet.create({
   postDot: {
     color: '#9CA3AF',
     fontSize: 14,
-    marginHorizontal: 4,
   },
   postDate: {
     color: '#6B7280',
     fontSize: 13,
-    marginRight: 6,
   },
   postCategoryPill: {
     backgroundColor: 'rgba(255, 184, 140, 0.35)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginLeft: 4,
   },
   postCategoryText: {
     color: '#8B4513',
@@ -888,19 +901,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   postTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 6,
+    marginBottom: 8,
+    lineHeight: 24,
   },
   postContent: {
     fontSize: 14,
     color: '#4B5563',
-    lineHeight: 20,
+    lineHeight: 22,
+    marginBottom: 4,
   },
   postActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 10,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(229, 231, 235, 0.5)',
+    marginTop: 4,
   },
   postActionButton: {
     flexDirection: 'row',
@@ -911,10 +932,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.6)',
-    marginRight: 12,
+    gap: 6,
   },
   postActionButtonLast: {
-    marginRight: 0,
+    marginLeft: 'auto',
   },
   postActionButtonActive: {
     backgroundColor: 'rgba(254, 226, 226, 0.9)',
@@ -924,6 +945,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 13,
     fontWeight: '600',
+    marginLeft: 0,
   },
   postActionTextActive: {
     color: '#DC2626',

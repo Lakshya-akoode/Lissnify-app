@@ -35,7 +35,30 @@ export const apiCall = async (endpoint, options = {}) => {
       },
     });
 
-    const data = await response.json();
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    let data;
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, return error
+        return {
+          success: false,
+          error: `Invalid JSON response: ${jsonError.message}`,
+          data: null
+        };
+      }
+    } else {
+      // If response is not JSON (e.g., HTML error page), read as text
+      const text = await response.text();
+      return {
+        success: false,
+        error: `Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}`,
+        data: null
+      };
+    }
 
     if (!response.ok) {
       return {
@@ -208,7 +231,7 @@ export const listenerCategoryWise = async (categorySlug) => {
 
 // Send connection request
 export const sendConnectionRequest = async (listenerId) => {
-  return apiCall('/api/send-connection-request/', {
+  return apiCall('/api/connection-request/', {
     method: 'POST',
     body: JSON.stringify({ listener_id: listenerId }),
   });
@@ -234,6 +257,51 @@ export const getUnreadCounts = async () => {
   return apiCall('/chat/unread-counts/', {
     method: 'GET',
   });
+};
+
+// Get user profile
+export const getUserProfile = async () => {
+  return apiCall('/api/user-profile/', {
+    method: 'GET',
+  });
+};
+
+// Update user profile
+export const updateUserProfile = async (profileData) => {
+  try {
+    const token = await getToken();
+    const url = getApiUrl('/api/user-profile/');
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        // Don't set Content-Type for FormData, let browser set it with boundary
+      },
+      body: profileData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `HTTP ${response.status}`,
+        data: data
+      };
+    }
+
+    return {
+      success: true,
+      data: data,
+      message: data.message
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Network error occurred'
+    };
+  }
 };
 
 

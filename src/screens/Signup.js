@@ -28,7 +28,7 @@ import {
   ChevronDown,
   X
 } from 'lucide-react-native';
-import { registerUser, verifyOTP, getCategories, isValidUserType } from '../utils/api';
+import { registerUser, verifyOTP, getCategories, isValidUserType, getDashboardUrl } from '../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Images from '../Assets';
 export default function SignupScreen({ navigation, route }) {
@@ -197,13 +197,37 @@ export default function SignupScreen({ navigation, route }) {
           await AsyncStorage.setItem('adminToken', otpResponse.data.access);
         }
 
+        // Get user data from response or form
+        const userData = {
+          id: otpResponse.data?.user?.id || otpResponse.data?.user?.pk || otpResponse.data?.user?.user_id,
+          full_name: otpResponse.data?.user?.full_name || form.full_name,
+          email: otpResponse.data?.user?.email || form.email,
+          user_type: otpResponse.data?.user?.user_type || form.user_type,
+          username: otpResponse.data?.user?.username || form.email.split('@')[0],
+        };
+
+        // Store complete user data in AsyncStorage (matching web version and Login.js)
+        await AsyncStorage.setItem('elysian_user', JSON.stringify(userData));
+        await AsyncStorage.setItem('full_name', userData.full_name);
+        await AsyncStorage.setItem('userType', userData.user_type); // Store userType for profile screen
+        if (userData.id) {
+          await AsyncStorage.setItem('user_id', userData.id.toString());
+        }
+
         setSuccess(`Registration successful! Redirecting...`);
         
-        // Navigate to appropriate dashboard
+        // Navigate to appropriate dashboard using getDashboardUrl (same as Login.js)
+        const userType = userData.user_type || form.user_type;
+        const dashboardRoute = getDashboardUrl(userType);
+
         setTimeout(() => {
-          const dashboardRoute = form.user_type === 'seeker' ? 'SeekerDashboard' : 'ListenerDashboard';
           if (navigation) {
-            navigation.replace(dashboardRoute);
+            try {
+              navigation.replace(dashboardRoute);
+            } catch (navError) {
+              console.log('Navigation error:', navError);
+              setError('Failed to navigate to dashboard. Please try logging in.');
+            }
           }
         }, 2000);
       } else {
