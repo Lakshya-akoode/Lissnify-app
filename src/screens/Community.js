@@ -10,7 +10,6 @@ import {
   TextInput,
   RefreshControl,
   KeyboardAvoidingView,
-  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {
@@ -34,7 +33,13 @@ import {
 
 const gradientColors = ['#FFF8B5', '#FFB88C'];
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CustomAlert from '../components/CustomAlert';
+import useAlert from '../hooks/useAlert';
+
 export default function CommunityScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+
   const [userName, setUserName] = useState('User');
   const [userInitials, setUserInitials] = useState('U');
   const [userType, setUserType] = useState('listener');
@@ -51,6 +56,7 @@ export default function CommunityScreen({ navigation }) {
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostCategory, setNewPostCategory] = useState(null);
   const [posting, setPosting] = useState(false);
+  const { alertState, showAlert, hideAlert } = useAlert();
 
   const fetchUserDetails = useCallback(async () => {
     try {
@@ -122,7 +128,7 @@ export default function CommunityScreen({ navigation }) {
 
   const handleCreatePost = useCallback(async () => {
     if (!newPostTitle.trim() || !newPostContent.trim()) {
-      Alert.alert('Incomplete', 'Please fill in both the title and content before posting.');
+      showAlert({ title: 'Incomplete', message: 'Please fill in both the title and content before posting.', type: 'warning' });
       return;
     }
 
@@ -141,11 +147,11 @@ export default function CommunityScreen({ navigation }) {
         setNewPostContent('');
         setNewPostCategory(null);
       } else if (response.error) {
-        Alert.alert('Error', response.error);
+        showAlert({ title: 'Error', message: response.error, type: 'error' });
       }
     } catch (err) {
       console.error('Error creating post:', err);
-      Alert.alert('Error', 'Failed to create post. Please try again.');
+      showAlert({ title: 'Error', message: 'Failed to create post. Please try again.', type: 'error' });
     } finally {
       setPosting(false);
     }
@@ -157,10 +163,10 @@ export default function CommunityScreen({ navigation }) {
         prev.map((item) =>
           item.id === post.id
             ? {
-                ...item,
-                is_liked: !item.is_liked,
-                likes_count: item.is_liked ? Math.max(0, item.likes_count - 1) : item.likes_count + 1,
-              }
+              ...item,
+              is_liked: !item.is_liked,
+              likes_count: item.is_liked ? Math.max(0, item.likes_count - 1) : item.likes_count + 1,
+            }
             : item
         )
       );
@@ -177,14 +183,14 @@ export default function CommunityScreen({ navigation }) {
         prev.map((item) =>
           item.id === post.id
             ? {
-                ...item,
-                is_liked: post.is_liked,
-                likes_count: post.likes_count,
-              }
+              ...item,
+              is_liked: post.is_liked,
+              likes_count: post.likes_count,
+            }
             : item
         )
       );
-      Alert.alert('Error', 'Unable to update like at the moment.');
+      showAlert({ title: 'Error', message: 'Unable to update like at the moment.', type: 'error' });
     }
   }, []);
 
@@ -208,34 +214,41 @@ export default function CommunityScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={gradientColors} style={styles.backgroundGradient} />
-
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.openDrawer()}
-        activeOpacity={0.7}
-      >
-        <Menu size={24} color="#111827" />
-      </TouchableOpacity>
-
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F97316" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#CD853F" />
           }
         >
-          <View style={styles.headerSection}>
-            <Users size={48} color="#111827" />
-            <Text style={styles.headerTitle}>Community</Text>
-            <Text style={styles.headerSubtitle}>
-              Connect, share, and lift each other up in our safe community space
-            </Text>
+          {/* Header */}
+          <View style={[styles.headerSection, { marginTop: insets.top + 10 }]}>
+            <LinearGradient
+              colors={['#FFF8E1', '#FFE0B2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerGradient}
+            >
+              <View style={styles.headerIconRow}>
+                <LinearGradient
+                  colors={['#FFF8B5', '#FFB88C']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.headerIconContainer}
+                >
+                  <Users size={28} color="#8B4513" />
+                </LinearGradient>
+              </View>
+              <Text style={styles.headerTitle}>Community</Text>
+              <Text style={styles.headerSubtitle}>
+                Connect, share, and lift each other up in our safe space
+              </Text>
+            </LinearGradient>
           </View>
 
           {error ? (
@@ -244,7 +257,9 @@ export default function CommunityScreen({ navigation }) {
             </View>
           ) : null}
 
+          {/* Create Post */}
           <View style={styles.createPostCard}>
+            <Text style={styles.createPostLabel}>Create a Post</Text>
             <View style={styles.createPostHeader}>
               <LinearGradient colors={['#CD853F', '#D2691E']} style={styles.avatarGradient}>
                 <Text style={styles.avatarInitials}>{userInitials}</Text>
@@ -257,65 +272,71 @@ export default function CommunityScreen({ navigation }) {
                   placeholderTextColor="#9CA3AF"
                   style={styles.titleInput}
                 />
-                <TextInput
-                  value={newPostContent}
-                  onChangeText={setNewPostContent}
-                  placeholder="Share your thoughts with the community..."
-                  placeholderTextColor="#9CA3AF"
-                  style={styles.bodyInput}
-                  multiline
-                  textAlignVertical="top"
-                />
               </View>
             </View>
+            <TextInput
+              value={newPostContent}
+              onChangeText={setNewPostContent}
+              placeholder="Share your thoughts with the community..."
+              placeholderTextColor="#9CA3AF"
+              style={styles.bodyInput}
+              multiline
+              textAlignVertical="top"
+            />
 
             <View style={styles.createPostFooter}>
-              <View style={styles.categoryChipsContainer}>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.categoryChipsScrollContent}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryChipsScrollContent}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.categoryChip,
+                    newPostCategory === null && styles.categoryChipActive,
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => setNewPostCategory(null)}
                 >
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      newPostCategory === null && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    No Category
+                  </Text>
+                </TouchableOpacity>
+                {categoriesData.map((category) => (
                   <TouchableOpacity
+                    key={category.id}
                     style={[
                       styles.categoryChip,
-                      newPostCategory === null && styles.categoryChipActive,
+                      newPostCategory === category.id && styles.categoryChipActive,
                     ]}
                     activeOpacity={0.8}
-                    onPress={() => setNewPostCategory(null)}
+                    onPress={() => setNewPostCategory(category.id)}
                   >
                     <Text
                       style={[
                         styles.categoryChipText,
-                        newPostCategory === null && styles.categoryChipTextActive,
+                        newPostCategory === category.id && styles.categoryChipTextActive,
                       ]}
                     >
-                      No Category
+                      {category.name}
                     </Text>
                   </TouchableOpacity>
-                  {categoriesData.map((category) => (
-                    <TouchableOpacity
-                      key={category.id}
-                      style={[
-                        styles.categoryChip,
-                        newPostCategory === category.id && styles.categoryChipActive,
-                      ]}
-                      activeOpacity={0.8}
-                      onPress={() => setNewPostCategory(category.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryChipText,
-                          newPostCategory === category.id && styles.categoryChipTextActive,
-                        ]}
-                      >
-                        {category.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
+                ))}
+              </ScrollView>
+            </View>
 
+            <View style={styles.createPostBottom}>
+              <View style={styles.postingAsRow}>
+                <Text style={styles.postingAsLabel}>Posting as</Text>
+                <View style={styles.postingAsTag}>
+                  <Text style={styles.postingAsTagText}>{capitalize(userType)}</Text>
+                </View>
+              </View>
               <TouchableOpacity
                 style={styles.postButton}
                 onPress={handleCreatePost}
@@ -325,37 +346,37 @@ export default function CommunityScreen({ navigation }) {
                 <LinearGradient
                   colors={['#CD853F', '#D2691E']}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                  end={{ x: 1, y: 0 }}
                   style={styles.postButtonGradient}
                 >
                   {posting ? (
                     <>
-                      <Loader2 size={18} color="#FFF" />
+                      <Loader2 size={16} color="#FFF" />
                       <Text style={styles.postButtonText}>Posting...</Text>
                     </>
                   ) : (
                     <>
-                      <Plus size={18} color="#FFF" />
+                      <Plus size={16} color="#FFF" />
                       <Text style={styles.postButtonText}>Post</Text>
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.postingAsRow}>
-              <Text style={styles.postingAsLabel}>Posting as:</Text>
-              <View style={styles.postingAsTag}>
-                <Text style={styles.postingAsTagText}>{capitalize(userType)}</Text>
-              </View>
-              <Text style={styles.postingAsCategory}>Category: {activeCategoryLabel}</Text>
-            </View>
           </View>
 
+          {/* Category Filters */}
           <View style={styles.categoriesCard}>
             <View style={styles.categoriesHeader}>
-              <Users size={20} color="#8B4513" />
-              <Text style={styles.categoriesTitle}>Discussion Categories</Text>
+              <LinearGradient
+                colors={['#FFF8B5', '#FFB88C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.categoriesIconContainer}
+              >
+                <MessageCircle size={18} color="#8B4513" />
+              </LinearGradient>
+              <Text style={styles.categoriesTitle}>Browse Topics</Text>
             </View>
             <ScrollView
               horizontal
@@ -402,8 +423,9 @@ export default function CommunityScreen({ navigation }) {
             </ScrollView>
           </View>
 
+          {/* Posts Section Header */}
           <View style={styles.postsHeaderRow}>
-            <Text style={styles.postsHeaderTitle}>All Discussions</Text>
+            <Text style={styles.postsHeaderTitle}>Discussions</Text>
             <View style={styles.postsCountPill}>
               <Text style={styles.postsCountText}>
                 {communityPosts.length} {communityPosts.length === 1 ? 'post' : 'posts'}
@@ -413,60 +435,71 @@ export default function CommunityScreen({ navigation }) {
 
           {loading ? (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#F97316" />
+              <ActivityIndicator size="large" color="#CD853F" />
               <Text style={styles.loaderText}>Loading community...</Text>
             </View>
           ) : communityPosts.length === 0 ? (
             <View style={styles.emptyState}>
+              <LinearGradient
+                colors={['#FFF8B5', '#FFB88C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.emptyIconContainer}
+              >
+                <MessageCircle size={36} color="#8B4513" />
+              </LinearGradient>
               <Text style={styles.emptyStateTitle}>No posts yet</Text>
               <Text style={styles.emptyStateSubtitle}>
-                Start the conversation by sharing your thoughts with the community.
+                Be the first to share! Start a conversation with the community above.
               </Text>
             </View>
           ) : (
             communityPosts.map((post) => (
-              <LinearGradient
-                key={post.id}
-                colors={["rgba(255, 255, 255, 0.9)", 'rgba(255, 248, 181, 0.6)']}
-                style={styles.postCard}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.postHeaderRow}>
+              <View key={post.id} style={styles.postCard}>
+                {/* Post Author Row */}
+                <View style={styles.postAuthorRow}>
                   <LinearGradient colors={['#CD853F', '#D2691E']} style={styles.postAvatar}>
                     <Text style={styles.postAvatarText}>{getInitials(post.author?.full_name || '')}</Text>
                   </LinearGradient>
-                  <View style={styles.postMeta}>
-                    <View style={styles.postMetaTop}>
-                      <Text style={styles.postAuthor}>{post.author?.full_name}</Text>
+                  <View style={styles.postAuthorInfo}>
+                    <View style={styles.postAuthorNameRow}>
+                      <Text style={styles.postAuthor} numberOfLines={1}>{post.author?.full_name}</Text>
                       {post.is_verified ? (
                         <View style={styles.verifiedBadge}>
-                          <Star size={12} color="#2563EB" />
-                          <Text style={styles.verifiedBadgeText}>Verified</Text>
-                        </View>
-                      ) : null}
-                      <Text style={styles.postDot}>•</Text>
-                      <Text style={styles.postDate}>{formatTimeAgo(post.created_at)}</Text>
-                      {post.category_name ? (
-                        <View style={styles.postCategoryPill}>
-                          <Text style={styles.postCategoryText}>{post.category_name}</Text>
+                          <Star size={10} color="#2563EB" />
                         </View>
                       ) : null}
                     </View>
-                    <Text style={styles.postTitle}>{post.title}</Text>
-                    <Text style={styles.postContent}>{post.content}</Text>
+                    <View style={styles.postMetaRow}>
+                      <Text style={styles.postDate}>{formatTimeAgo(post.created_at)}</Text>
+                      {post.category_name ? (
+                        <>
+                          <Text style={styles.postDot}>•</Text>
+                          <View style={styles.postCategoryPill}>
+                            <Text style={styles.postCategoryText}>{post.category_name}</Text>
+                          </View>
+                        </>
+                      ) : null}
+                    </View>
                   </View>
                 </View>
 
+                {/* Post Content */}
+                <View style={styles.postBody}>
+                  <Text style={styles.postTitle}>{post.title}</Text>
+                  <Text style={styles.postContent} numberOfLines={4}>{post.content}</Text>
+                </View>
+
+                {/* Post Actions */}
                 <View style={styles.postActionsRow}>
                   <TouchableOpacity
                     style={[styles.postActionButton, post.is_liked && styles.postActionButtonActive]}
                     onPress={() => handleToggleLike(post)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
                     <Heart
-                      size={18}
-                      color={post.is_liked ? '#DC2626' : '#6B7280'}
+                      size={16}
+                      color={post.is_liked ? '#DC2626' : '#9CA3AF'}
                       fill={post.is_liked ? '#DC2626' : 'none'}
                     />
                     <Text
@@ -476,30 +509,38 @@ export default function CommunityScreen({ navigation }) {
                     </Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.postActionButton} activeOpacity={0.8}>
-                    <MessageCircle size={18} color="#6B7280" />
+                  <TouchableOpacity style={styles.postActionButton} activeOpacity={0.7}>
+                    <MessageCircle size={16} color="#9CA3AF" />
                     <Text style={styles.postActionText}>{post.comments_count}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={[styles.postActionButton, styles.postActionButtonLast]}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <Share2 size={18} color="#6B7280" />
+                    <Share2 size={16} color="#9CA3AF" />
                     <Text style={styles.postActionText}>Share</Text>
                   </TouchableOpacity>
                 </View>
-              </LinearGradient>
+              </View>
             ))
           )}
 
           {communityPosts.length > 0 && !loading ? (
             <TouchableOpacity style={styles.loadMoreButton} activeOpacity={0.8}>
-              <Text style={styles.loadMoreText}>Load More Posts</Text>
+              <LinearGradient
+                colors={['#CD853F', '#D2691E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.loadMoreGradient}
+              >
+                <Text style={styles.loadMoreText}>Load More Posts</Text>
+              </LinearGradient>
             </TouchableOpacity>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
+      <CustomAlert {...alertState} />
     </View>
   );
 }
@@ -527,234 +568,253 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  backgroundGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  menuButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    left: 16,
-    zIndex: 1000,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6,
-  },
   scrollView: {
     flex: 1,
   },
   content: {
-    paddingTop: Platform.OS === 'ios' ? 100 : 80,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
   },
+
+  // Header
   headerSection: {
+    marginBottom: 20,
+  },
+  headerGradient: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderRadius: 24,
     alignItems: 'center',
-    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FFF',
+    shadowColor: '#CD853F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+  },
+  headerIconRow: {
+    marginBottom: 12,
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 12,
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: '#4B5563',
+    fontSize: 14,
+    color: '#6B7280',
     textAlign: 'center',
-    maxWidth: 320,
+    lineHeight: 20,
+    fontWeight: '500',
+    maxWidth: 300,
   },
+
+  // Error
   errorContainer: {
     backgroundColor: '#FEF2F2',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#FECACA',
     marginBottom: 16,
   },
   errorText: {
     color: '#B91C1C',
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
+    fontWeight: '500',
   },
+
+  // Create Post
   createPostCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#CD853F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderColor: 'rgba(205, 133, 63, 0.12)',
+  },
+  createPostLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 14,
   },
   createPostHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   avatarGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   avatarInitials: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
   },
   createPostInputs: {
     flex: 1,
-    minWidth: 0, // Ensures proper flex behavior
+    minWidth: 0,
   },
   titleInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 10,
     color: '#111827',
   },
   bodyInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    minHeight: 100,
+    minHeight: 88,
     fontSize: 14,
     color: '#111827',
+    lineHeight: 20,
+    marginBottom: 12,
   },
   createPostFooter: {
-    flexDirection: 'column',
-    marginBottom: 16,
-    gap: 12,
-  },
-  categoryChipsContainer: {
-    width: '100%',
+    marginBottom: 14,
   },
   categoryChipsScrollContent: {
     paddingRight: 4,
+    gap: 8,
   },
   categoryChip: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginRight: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
   },
   categoryChipActive: {
     backgroundColor: '#CD853F',
     borderColor: '#CD853F',
   },
   categoryChipText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
     fontWeight: '600',
   },
   categoryChipTextActive: {
     color: '#FFFFFF',
   },
+  createPostBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   postButton: {
-    alignSelf: 'flex-end',
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   postButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 6,
   },
   postButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '700',
   },
   postingAsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   postingAsLabel: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
   postingAsTag: {
-    backgroundColor: '#FFF1DC',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(205, 133, 63, 0.12)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   postingAsTagText: {
     color: '#8B4513',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
-  postingAsCategory: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
+
+  // Categories
   categoriesCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 24,
-    padding: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    borderColor: 'rgba(205, 133, 63, 0.12)',
+    shadowColor: '#CD853F',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
   },
   categoriesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
+  },
+  categoriesIconContainer: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   categoriesTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
-    marginLeft: 8,
+    color: '#374151',
   },
   categoriesChips: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 4,
+    gap: 8,
   },
   filterChip: {
-    borderRadius: 999,
+    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 9,
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    minWidth: 60,
+    minWidth: 56,
     alignItems: 'center',
   },
   filterChipActive: {
@@ -762,213 +822,230 @@ const styles = StyleSheet.create({
     borderColor: '#CD853F',
   },
   filterChipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#6B7280',
   },
   filterChipTextActive: {
     color: '#FFFFFF',
   },
+
+  // Posts Header
   postsHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   postsHeaderTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#374151',
   },
   postsCountPill: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: 'rgba(205, 133, 63, 0.12)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   postsCountText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#8B4513',
   },
+
+  // Loader
   loaderContainer: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 48,
   },
   loaderText: {
     marginTop: 12,
-    color: '#6B7280',
-    fontSize: 15,
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '500',
   },
+
+  // Empty State
   emptyState: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 32,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  postCard: {
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
+    borderColor: 'rgba(205, 133, 63, 0.12)',
+    shadowColor: '#CD853F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
     shadowRadius: 12,
-    elevation: 5,
   },
-  postHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  postAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginBottom: 18,
+  },
+  emptyStateTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  emptyStateSubtitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 260,
+  },
+
+  // Post Card
+  postCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(205, 133, 63, 0.1)',
+    shadowColor: '#CD853F',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+  },
+  postAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  postAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   postAvatarText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
   },
-  postMeta: {
+  postAuthorInfo: {
     flex: 1,
-    minWidth: 0, // Ensures proper text wrapping
+    minWidth: 0,
   },
-  postMetaTop: {
+  postAuthorNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-    gap: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   postAuthor: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#111827',
+    flexShrink: 1,
   },
   verifiedBadge: {
+    backgroundColor: '#DBEAFE',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#DBEAFE',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 4,
-  },
-  verifiedBadgeText: {
-    color: '#2563EB',
-    fontSize: 11,
-    fontWeight: '600',
+    gap: 6,
   },
   postDot: {
-    color: '#9CA3AF',
-    fontSize: 14,
+    color: '#D1D5DB',
+    fontSize: 10,
   },
   postDate: {
-    color: '#6B7280',
-    fontSize: 13,
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '500',
   },
   postCategoryPill: {
-    backgroundColor: 'rgba(255, 184, 140, 0.35)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(205, 133, 63, 0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   postCategoryText: {
     color: '#8B4513',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
+  postBody: {
+    marginBottom: 12,
+  },
   postTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-    lineHeight: 24,
+    color: '#1F2937',
+    marginBottom: 6,
+    lineHeight: 22,
   },
   postContent: {
     fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 22,
-    marginBottom: 4,
+    color: '#6B7280',
+    lineHeight: 21,
   },
   postActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 10,
-    paddingTop: 4,
+    gap: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(229, 231, 235, 0.5)',
-    marginTop: 4,
+    borderTopColor: '#F3F4F6',
   },
   postActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F9FAFB',
+    gap: 5,
   },
   postActionButtonLast: {
     marginLeft: 'auto',
   },
   postActionButtonActive: {
-    backgroundColor: 'rgba(254, 226, 226, 0.9)',
-    borderColor: 'rgba(252, 165, 165, 0.8)',
+    backgroundColor: '#FEF2F2',
   },
   postActionText: {
-    color: '#6B7280',
-    fontSize: 13,
+    color: '#9CA3AF',
+    fontSize: 12,
     fontWeight: '600',
-    marginLeft: 0,
   },
   postActionTextActive: {
     color: '#DC2626',
   },
+
+  // Load More
   loadMoreButton: {
-    marginTop: 16,
+    marginTop: 8,
+    marginBottom: 8,
     alignSelf: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  loadMoreGradient: {
     paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 184, 140, 0.6)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 16,
   },
   loadMoreText: {
-    color: '#8B4513',
-    fontSize: 15,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

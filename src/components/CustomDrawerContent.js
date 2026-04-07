@@ -133,24 +133,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 30,
+    paddingBottom: Platform.OS === 'ios' ? 0 : 24,
+    paddingHorizontal: Platform.OS === 'ios' ? 0 : 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+
   },
   headerContent: {
-    paddingLeft:10,
-    justifyContent:'center',
+    paddingLeft: 10,
+    justifyContent: 'center',
     marginTop: 8,
-    width:100,
-    height:100,
+    width: 100,
+    height: 100,
   },
   logo: {
     width: 200,
     height: 200,
     marginBottom: 0,
-    
+
   },
   headerTitle: {
     fontSize: 24,
@@ -186,11 +187,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    
+
   },
   menuIconContainerActive: {
     backgroundColor: '#F97316',
-    
+
   },
   menuLabel: {
     fontSize: 16,

@@ -35,7 +35,11 @@ import {
   getApiUrl,
 } from '../utils/api';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export default function CategoryListeners({ navigation, route }) {
+  const insets = useSafeAreaInsets();
+
   const categorySlug = route?.params?.categorySlug || route?.params?.categoryId;
   const categoryId = route?.params?.categoryId;
   const categoryName = route?.params?.categoryName;
@@ -60,7 +64,7 @@ export default function CategoryListeners({ navigation, route }) {
     await Promise.all([fetchListeners(), fetchCategoryDetails(), fetchConnectedListeners()]);
   };
 
-  const fetchListeners = async () => { 
+  const fetchListeners = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -179,8 +183,8 @@ export default function CategoryListeners({ navigation, route }) {
 
   const renderListenerCard = (listener, index) => {
     const displayName = listener.name || listener.user?.full_name || listener.username || 'Listener';
-    const ratingValue = typeof listener.rating === 'number' ? listener.rating : 
-                       listener.rating ? parseFloat(listener.rating) : 4.0;
+    const ratingValue = typeof listener.rating === 'number' ? listener.rating :
+      listener.rating ? parseFloat(listener.rating) : 4.0;
     const description = listener.description || 'Compassionate listener ready to support you';
     const tags = listener.preferences || listener.tags || [];
     const languages = listener.languages || ['English'];
@@ -212,8 +216,8 @@ export default function CategoryListeners({ navigation, route }) {
             <View style={styles.ratingRow}>
               <Star size={16} color="#F59E0B" fill="#F59E0B" />
               <Text style={styles.ratingText}>
-                {typeof ratingValue === 'number' && !isNaN(ratingValue) 
-                  ? ratingValue.toFixed(1) 
+                {typeof ratingValue === 'number' && !isNaN(ratingValue)
+                  ? ratingValue.toFixed(1)
                   : '4.0'}
               </Text>
             </View>
@@ -307,8 +311,8 @@ export default function CategoryListeners({ navigation, route }) {
               notification.type === 'success'
                 ? ['#10B981', '#059669']
                 : notification.type === 'error'
-                ? ['#EF4444', '#DC2626']
-                : ['#3B82F6', '#2563EB']
+                  ? ['#EF4444', '#DC2626']
+                  : ['#3B82F6', '#2563EB']
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -329,8 +333,8 @@ export default function CategoryListeners({ navigation, route }) {
                   {notification.type === 'success'
                     ? 'Success!'
                     : notification.type === 'error'
-                    ? 'Error'
-                    : 'Info'}
+                      ? 'Error'
+                      : 'Info'}
                 </Text>
                 <Text style={styles.notificationMessage}>{notification.message}</Text>
               </View>
@@ -347,17 +351,11 @@ export default function CategoryListeners({ navigation, route }) {
       )}
 
       {/* Menu Button */}
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.openDrawer()}
-        activeOpacity={0.7}
-      >
-        <Menu size={24} color="#111827" />
-      </TouchableOpacity>
+
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 100 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header */}
@@ -447,7 +445,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 40,
+    // paddingBottom handled inline
   },
   loadingContainer: {
     flex: 1,

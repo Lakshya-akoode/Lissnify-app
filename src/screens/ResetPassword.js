@@ -14,49 +14,53 @@ import {
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
-import CheckBox from '@react-native-community/checkbox';
 import {
-  Mail,
   Lock,
   Eye,
   EyeOff,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
 } from 'lucide-react-native';
-import { loginUser, getDashboardUrl } from '../utils/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { resetPassword } from '../utils/api';
+import CustomAlert from '../components/CustomAlert';
+import useAlert from '../hooks/useAlert';
 import Images from '../Assets';
 
-export default function LoginScreen({ navigation }) {
+export default function ResetPasswordScreen({ navigation, route }) {
   const [formData, setFormData] = useState({
-    email: '',
     password: '',
-    rememberMe: false,
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { alertState, showAlert, hideAlert } = useAlert();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
 
   useEffect(() => {
-    const loadRememberedCredentials = async () => {
-      try {
-        const isRemembered = await AsyncStorage.getItem('rememberMe');
-        if (isRemembered === 'true') {
-          const savedEmail = await AsyncStorage.getItem('storedEmail');
-          const savedPassword = await AsyncStorage.getItem('storedPassword');
-          if (savedEmail && savedPassword) {
-            setFormData({
-              email: savedEmail,
-              password: savedPassword,
-              rememberMe: true,
-            });
-          }
-        }
-      } catch (err) {
-        console.log('Error loading remembered credentials:', err);
-      }
-    };
-    loadRememberedCredentials();
-  }, []);
+    const emailParam = route?.params?.email;
+    const otpParam = route?.params?.otp;
+
+    if (!emailParam || !otpParam) {
+      showAlert({
+        title: 'Invalid Link',
+        message: 'Invalid reset link. Please start from forgot password page.',
+        type: 'error',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('ForgotPassword'),
+          },
+        ],
+      });
+      return;
+    }
+
+    setEmail(emailParam);
+    setOtp(otpParam);
+  }, [route?.params, navigation]);
 
   const handleInputChange = (key, value) => {
     setFormData(prev => ({
@@ -66,76 +70,62 @@ export default function LoginScreen({ navigation }) {
     if (error) setError('');
   };
 
+  const validatePassword = (password) => {
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      return 'Password must contain at least one number';
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
     setError('');
 
-    if (!formData.email || !formData.password) {
-      setError('Please fill in all required fields');
+    if (!formData.password || !formData.confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    // Validate password strength
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await loginUser({
-        username_or_email: formData.email,
-        password: formData.password,
-      });
+      const response = await resetPassword(email, otp, formData.password);
 
       if (response.success) {
-        // Store token
-        if (response.data?.access) {
-          await AsyncStorage.setItem('adminToken', response.data.access);
-          if (formData.rememberMe) {
-            await AsyncStorage.setItem('rememberMe', 'true');
-            await AsyncStorage.setItem('storedEmail', formData.email);
-            await AsyncStorage.setItem('storedPassword', formData.password);
-          } else {
-            await AsyncStorage.removeItem('rememberMe');
-            await AsyncStorage.removeItem('storedEmail');
-            await AsyncStorage.removeItem('storedPassword');
-          }
-        }
-
-        // Get complete user data including ID
-        const userData = {
-          id: response.data?.user?.u_id || response.data?.user?.id || response.data?.user?.pk || response.data?.user?.user_id,
-          full_name: response.data?.user?.name || response.data?.user?.full_name || formData.email.split('@')[0],
-          email: response.data?.user?.email || formData.email,
-          user_type: response.data?.user?.user_type || 'seeker',
-          username: response.data?.user?.username || formData.email.split('@')[0],
-        };
-
-        // Store complete user data in AsyncStorage (matching web version)
-        await AsyncStorage.setItem('elysian_user', JSON.stringify(userData));
-        await AsyncStorage.setItem('full_name', userData.full_name);
-        if (userData.id) {
-          await AsyncStorage.setItem('user_id', userData.id.toString());
-        }
-
-        // Navigate to appropriate dashboard
-        const userType = response.data?.user?.user_type || 'seeker';
-        const dashboardRoute = getDashboardUrl(userType);
-
-        if (navigation) {
-          try {
-            navigation.replace(dashboardRoute);
-          } catch (navError) {
-            console.log('Dashboard route not found, you may need to add it to your navigation stack');
-            // You can navigate to a home screen or login screen here
-            // navigation.replace('Home');
-          }
-        }
+        showAlert({
+          title: 'Success',
+          message: 'Password reset successfully! Please login with your new password.',
+          type: 'success',
+          buttons: [
+            {
+              text: 'Go to Login',
+              onPress: () => navigation.navigate('Login'),
+            },
+          ],
+        });
       } else {
-        const nonFieldError = Array.isArray(response.data?.non_field_errors)
-          ? response.data.non_field_errors.join(', ')
-          : response.data?.non_field_errors;
-
         setError(
-          response.data?.detail ||
-          nonFieldError ||
-          response.error ||
-          'Login failed. Please check your credentials.'
+          response.error || 'Failed to reset password. Please try again.',
         );
       }
     } catch (err) {
@@ -145,27 +135,35 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  if (!email || !otp) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#F97316" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Background Image */}
       <ImageBackground
         source={Images.loginBackground}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
-        {/* Gradient Overlay */}
         <LinearGradient
-          colors={['rgba(255, 247, 237, 0.6)', 'rgba(255, 237, 213, 0.5)', 'rgba(255, 255, 255, 0.4)']}
+          colors={[
+            'rgba(255, 247, 237, 0.6)',
+            'rgba(255, 237, 213, 0.5)',
+            'rgba(255, 255, 255, 0.4)',
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradientOverlay}
         />
 
-        {/* Content */}
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -173,9 +171,7 @@ export default function LoginScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.contentContainer}>
-            {/* Login Card */}
             <View style={styles.card}>
-              {/* Glass-morphism effect for iOS */}
               {Platform.OS === 'ios' && (
                 <BlurView
                   style={styles.blurView}
@@ -184,11 +180,9 @@ export default function LoginScreen({ navigation }) {
                 />
               )}
 
-              {/* Card Content */}
               <View style={styles.cardContent}>
                 {/* Header */}
                 <View style={styles.header}>
-                  {/* Logo */}
                   <View style={styles.logoContainer}>
                     <Image
                       source={Images.logo}
@@ -196,41 +190,25 @@ export default function LoginScreen({ navigation }) {
                       resizeMode="contain"
                     />
                   </View>
-
-                  <Text style={styles.title}>Welcome Back</Text>
+                  <Text style={styles.title}>Reset Password</Text>
                   <Text style={styles.subtitle}>
-                    Login to continue your soulful journey
+                    Enter your new password below
                   </Text>
                 </View>
 
                 {/* Form */}
                 <View style={styles.form}>
-                  {/* Email/Username Field */}
+                  {/* New Password */}
                   <View style={styles.inputWrapper}>
-                    <Text style={styles.label}>Email Address or Username</Text>
-                    <View style={styles.inputContainer}>
-                      <Mail size={20} color="#9CA3AF" style={styles.icon} />
-                      <TextInput
-                        placeholder="Enter your email or Username"
-                        value={formData.email}
-                        onChangeText={(text) => handleInputChange('email', text)}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        style={styles.input}
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                  </View>
-
-                  {/* Password Field */}
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.label}>Password</Text>
+                    <Text style={styles.label}>New Password</Text>
                     <View style={styles.inputContainer}>
                       <Lock size={20} color="#9CA3AF" style={styles.icon} />
                       <TextInput
-                        placeholder="Enter your password"
+                        placeholder="Enter new password"
                         value={formData.password}
-                        onChangeText={(text) => handleInputChange('password', text)}
+                        onChangeText={text =>
+                          handleInputChange('password', text)
+                        }
                         secureTextEntry={!showPassword}
                         style={styles.input}
                         placeholderTextColor="#9CA3AF"
@@ -246,39 +224,50 @@ export default function LoginScreen({ navigation }) {
                         )}
                       </TouchableOpacity>
                     </View>
+                    <Text style={styles.helperText}>
+                      Password must be at least 8 characters with uppercase,
+                      lowercase, and number
+                    </Text>
                   </View>
 
-                  {/* Remember Me & Forgot Password */}
-                  <View style={styles.optionsRow}>
-                    <View style={styles.checkboxContainer}>
-                      <CheckBox
-                        value={formData.rememberMe}
-                        onValueChange={(value) => handleInputChange('rememberMe', value)}
-                        tintColors={{ true: '#ad9f95ff', false: '#9CA3AF' }}
-                        style={styles.checkbox}
-                      />
-                      <Text style={styles.checkboxLabel}>Remember me</Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => {
-                        // Navigate to forgot password screen if exists
-                        if (navigation) {
-                          navigation.navigate('ForgotPassword');
+                  {/* Confirm Password */}
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.label}>Confirm Password</Text>
+                    <View style={styles.inputContainer}>
+                      <Lock size={20} color="#9CA3AF" style={styles.icon} />
+                      <TextInput
+                        placeholder="Confirm new password"
+                        value={formData.confirmPassword}
+                        onChangeText={text =>
+                          handleInputChange('confirmPassword', text)
                         }
-                      }}
-                    >
-                      <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                    </TouchableOpacity>
+                        secureTextEntry={!showConfirmPassword}
+                        style={styles.input}
+                        placeholderTextColor="#9CA3AF"
+                      />
+                      <TouchableOpacity
+                        onPress={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        style={styles.eyeButton}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff size={20} color="#9CA3AF" />
+                        ) : (
+                          <Eye size={20} color="#9CA3AF" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
-                  {/* Error Message */}
-                  {error && (
+                  {/* Error */}
+                  {error ? (
                     <View style={styles.errorContainer}>
                       <Text style={styles.errorText}>{error}</Text>
                     </View>
-                  )}
+                  ) : null}
 
-                  {/* Login Button */}
+                  {/* Submit Button */}
                   <TouchableOpacity
                     onPress={handleSubmit}
                     disabled={isLoading}
@@ -290,17 +279,19 @@ export default function LoginScreen({ navigation }) {
                       end={{ x: 1, y: 0 }}
                       style={[
                         styles.button,
-                        isLoading && styles.buttonDisabled
+                        isLoading && styles.buttonDisabled,
                       ]}
                     >
                       {isLoading ? (
                         <>
                           <ActivityIndicator size="small" color="#FFF" />
-                          <Text style={styles.buttonText}>Signing In...</Text>
+                          <Text style={styles.buttonText}>
+                            Resetting Password...
+                          </Text>
                         </>
                       ) : (
                         <>
-                          <Text style={styles.buttonText}>Login</Text>
+                          <Text style={styles.buttonText}>Reset Password</Text>
                           <ArrowRight size={20} color="#FFF" />
                         </>
                       )}
@@ -308,21 +299,24 @@ export default function LoginScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
-                {/* Footer Links */}
+                {/* Footer */}
                 <View style={styles.footer}>
                   <Text style={styles.footerText}>
-                    Don't have an account?{' '}
+                    Remember your password?{' '}
                     <Text
                       style={styles.link}
-                      onPress={() => {
-                        if (navigation) {
-                          navigation.navigate('Signup');
-                        }
-                      }}
+                      onPress={() => navigation.navigate('Login')}
                     >
-                      Sign up here
+                      Login here
                     </Text>
                   </Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={styles.backButton}
+                  >
+                    <ArrowLeft size={16} color="#F97316" />
+                    <Text style={styles.backText}>Go Back</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -330,6 +324,7 @@ export default function LoginScreen({ navigation }) {
         </ScrollView>
         </KeyboardAvoidingView>
       </ImageBackground>
+      <CustomAlert {...alertState} />
     </View>
   );
 }
@@ -338,11 +333,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+  },
   backgroundImage: {
     flex: 1,
     width: '100%',
     height: '100%',
-    resizeMode: "cover"
+    resizeMode: 'cover',
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -371,14 +372,14 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'android' ? 'rgba(255, 255, 255, 0.21)' : 'transparent',
+    backgroundColor:
+      Platform.OS === 'android' ? 'rgba(255, 255, 255, 0.21)' : 'transparent',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.4)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
-
   },
   blurView: {
     position: 'absolute',
@@ -389,12 +390,15 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 24,
-    backgroundColor: Platform.OS === 'android' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.3)',
+    backgroundColor:
+      Platform.OS === 'android'
+        ? 'rgba(255, 255, 255, 0.85)'
+        : 'rgba(255, 255, 255, 0.3)',
   },
   header: {
     marginBottom: 24,
     alignItems: 'center',
-    justifyContent: "center",
+    justifyContent: 'center',
     width: '100%',
   },
   logoContainer: {
@@ -402,13 +406,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 0,
     marginTop: 0,
-    paddingRight: 20
+    paddingRight: 20,
   },
   logo: {
     width: 200,
     height: 100,
     maxWidth: '100%',
-
   },
   title: {
     fontSize: 20,
@@ -418,7 +421,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#4B5563',
     textAlign: 'center',
   },
@@ -457,28 +460,10 @@ const styles = StyleSheet.create({
     padding: 4,
     marginLeft: 8,
   },
-  optionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    transform: [{ scale: 0.8 }],
-  },
-  checkboxLabel: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#374151',
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: '#F97316',
-    fontWeight: '600',
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
   },
   errorContainer: {
     backgroundColor: '#FEF2F2',
@@ -502,8 +487,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Platform.OS === 'ios' ? 0 : 0,
-    paddingHorizontal: Platform.OS === 'ios' ? 0 : 0,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -512,7 +495,6 @@ const styles = StyleSheet.create({
     elevation: 6,
     gap: 8,
     height: Platform.OS === 'ios' ? 50 : 40,
-    justifyContent: 'center',
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -535,5 +517,16 @@ const styles = StyleSheet.create({
     color: '#F97316',
     fontWeight: '600',
   },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  backText: {
+    fontSize: 14,
+    color: '#F97316',
+    fontWeight: '600',
+  },
 });
-

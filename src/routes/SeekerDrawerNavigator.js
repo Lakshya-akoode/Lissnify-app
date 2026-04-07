@@ -6,6 +6,7 @@ import CategoryListeners from '../screens/CategoryListeners';
 import Chats from '../screens/Chats';
 import Community from '../screens/Community';
 import Profile from '../screens/Profile';
+import { Plane } from 'lucide-react-native';
 
 const Stack = createNativeStackNavigator();
 
@@ -13,26 +14,34 @@ const Stack = createNativeStackNavigator();
 function DrawerWrapper({ navigation, route }) {
   const drawerRef = useRef(null);
   const [currentRoute, setCurrentRoute] = useState(route?.name || 'SeekerDashboard');
-  
+
   useEffect(() => {
     setCurrentRoute(route?.name || 'SeekerDashboard');
   }, [route?.name]);
-  
+
+  // Enhanced navigation with drawer methods
+  const modifiedNavigation = {
+    ...navigation,
+    openDrawer: () => drawerRef.current?.openDrawer(),
+    closeDrawer: () => drawerRef.current?.closeDrawer(),
+    toggleDrawer: () => drawerRef.current?.toggleDrawer(),
+  };
+
   // Get the current screen component
   const getScreenComponent = () => {
     switch (currentRoute) {
       case 'SeekerDashboard':
-        return <SeekerDashboard navigation={navigation} route={route} />;
+        return <SeekerDashboard navigation={modifiedNavigation} route={route} />;
       case 'CategoryListeners':
-        return <CategoryListeners navigation={navigation} route={route} />;
+        return <CategoryListeners navigation={modifiedNavigation} route={route} />;
       case 'Chats':
-        return <Chats navigation={navigation} route={route} />;
+        return <Chats navigation={modifiedNavigation} route={route} />;
       case 'Community':
-        return <Community navigation={navigation} route={route} />;
+        return <Community navigation={modifiedNavigation} route={route} />;
       case 'Profile':
-        return <Profile navigation={navigation} route={route} />;
+        return <Profile navigation={modifiedNavigation} route={route} />;
       default:
-        return <SeekerDashboard navigation={navigation} route={route} />;
+        return <SeekerDashboard navigation={modifiedNavigation} route={route} />;
     }
   };
 
@@ -65,28 +74,28 @@ export default function SeekerDrawerNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        gestureEnabled: false,
+        gestureEnabled: Platform.OS === 'ios' ? true : false,
       }}
       initialRouteName="SeekerDashboard"
     >
-      <Stack.Screen 
-        name="SeekerDashboard" 
+      <Stack.Screen
+        name="SeekerDashboard"
         component={DrawerWrapper}
       />
-      <Stack.Screen 
-        name="CategoryListeners" 
+      <Stack.Screen
+        name="CategoryListeners"
         component={DrawerWrapper}
       />
-      <Stack.Screen 
-        name="Chats" 
+      <Stack.Screen
+        name="Chats"
         component={DrawerWrapper}
       />
-      <Stack.Screen 
-        name="Community" 
+      <Stack.Screen
+        name="Community"
         component={DrawerWrapper}
       />
-      <Stack.Screen 
-        name="Profile" 
+      <Stack.Screen
+        name="Profile"
         component={DrawerWrapper}
       />
     </Stack.Navigator>

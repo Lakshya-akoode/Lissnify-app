@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
   ActivityIndicator,
   Platform,
   Alert,
@@ -16,12 +17,12 @@ import CheckBox from '@react-native-community/checkbox';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import LinearGradient from 'react-native-linear-gradient';
-import { 
-  User, 
-  Mail, 
-  Lock, 
-  Calendar, 
-  Users, 
+import {
+  User,
+  Mail,
+  Lock,
+  Calendar,
+  Users,
   ArrowRight,
   Check,
   Smartphone,
@@ -215,7 +216,7 @@ export default function SignupScreen({ navigation, route }) {
         }
 
         setSuccess(`Registration successful! Redirecting...`);
-        
+
         // Navigate to appropriate dashboard using getDashboardUrl (same as Login.js)
         const userType = userData.user_type || form.user_type;
         const dashboardRoute = getDashboardUrl(userType);
@@ -251,10 +252,10 @@ export default function SignupScreen({ navigation, route }) {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const dateObj = new Date(dateString);
-    return dateObj.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return dateObj.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
@@ -274,472 +275,478 @@ export default function SignupScreen({ navigation, route }) {
           style={styles.gradientOverlay}
         />
 
-        <ScrollView 
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Header Section */}
           <View style={styles.header}>
-        <Text style={styles.title}>
-          {form.user_type 
-            ? `Create Your ${form.user_type === 'seeker' ? 'Support Seeker' : 'Listener'} Account`
-            : 'Create Your Account'
-          }
-        </Text>
-      <Text style={styles.subtitle}>
-          {form.user_type 
-            ? `Join our soulful emotional well-being community as a ${form.user_type === 'seeker' ? 'Support Seeker' : 'Listener with Empathy'} and start your journey towards healing and growth`
-            : 'Join our soulful emotional well-being community and start your journey towards healing and growth'
-          }
-        </Text>
-      </View>
-
-      {/* Main Card Container */}
-      <View style={styles.card}>
-        {/* Role Pre-selection Message */}
-        {route?.params?.role && form.user_type && (
-          <View style={styles.roleMessage}>
-            <Check size={20} color="#000" />
-            <View style={styles.roleMessageText}>
-              <Text style={styles.roleMessageTitle}>
-                Role Pre-selected: {form.user_type === 'seeker' ? 'Support Seeker' : 'Listener with Empathy'}
-              </Text>
-              <Text style={styles.roleMessageSubtitle}>
-                You can change this selection below if needed
-      </Text>
-            </View>
+            <Text style={styles.title}>
+              {form.user_type
+                ? `Create Your ${form.user_type === 'seeker' ? 'Support Seeker' : 'Listener'} Account`
+                : 'Create Your Account'
+              }
+            </Text>
+            <Text style={styles.subtitle}>
+              {form.user_type
+                ? `Join our soulful emotional well-being community as a ${form.user_type === 'seeker' ? 'Support Seeker' : 'Listener with Empathy'} and start your journey towards healing and growth`
+                : 'Join our soulful emotional well-being community and start your journey towards healing and growth'
+              }
+            </Text>
           </View>
-        )}
 
-        {/* Role Info Badge */}
-
-
-        {/* Form Fields */}
-      <View style={styles.form}>
-          {/* Full Name and Email Row */}
-        <View style={styles.row}>
-            <View style={[styles.inputWrapper, { marginRight: 6 }]}>
-              <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputContainer}>
-                <User size={20} color="#9CA3AF" style={styles.icon} />
-            <TextInput
-              placeholder="Enter your full name"
-                  value={form.full_name}
-                  onChangeText={(text) => handleChange('full_name', text)}
-              style={styles.input}
-                  placeholderTextColor="#9CA3AF"
-            />
-          </View>
-            </View>
-            <View style={[styles.inputWrapper, { marginRight: 0 }]}>
-              <Text style={styles.label}>Email Address</Text>
-          <View style={styles.inputContainer}>
-                <Mail size={20} color="#9CA3AF" style={styles.icon} />
-            <TextInput
-              placeholder="Enter your email"
-              value={form.email}
-                  onChangeText={(text) => handleChange('email', text)}
-              keyboardType="email-address"
-                  autoCapitalize="none"
-              style={styles.input}
-                  placeholderTextColor="#9CA3AF"
-            />
+          {/* Main Card Container */}
+          <View style={styles.card}>
+            {/* Role Pre-selection Message */}
+            {route?.params?.role && form.user_type && (
+              <View style={styles.roleMessage}>
+                <Check size={20} color="#000" />
+                <View style={styles.roleMessageText}>
+                  <Text style={styles.roleMessageTitle}>
+                    Role Pre-selected: {form.user_type === 'seeker' ? 'Support Seeker' : 'Listener with Empathy'}
+                  </Text>
+                  <Text style={styles.roleMessageSubtitle}>
+                    You can change this selection below if needed
+                  </Text>
+                </View>
               </View>
-          </View>
-        </View>
+            )}
 
-          {/* Password and Confirm Password Row */}
-        <View style={styles.row}>
-            <View style={[styles.inputWrapper, { marginRight: 6 }]}>
-              <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
-                <Lock size={20} color="#9CA3AF" style={styles.icon} />
-            <TextInput
-              placeholder="Create password"
-              value={form.password}
-              secureTextEntry
-                  onChangeText={(text) => handleChange('password', text)}
-              style={styles.input}
-                  placeholderTextColor="#9CA3AF"
-            />
-          </View>
-            </View>
-            <View style={[styles.inputWrapper, { marginRight: 0 }]}>
-              <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputContainer}>
-                <Lock size={20} color="#9CA3AF" style={styles.icon} />
-            <TextInput
-              placeholder="Confirm password"
-              value={form.confirmPassword}
-              secureTextEntry
-                  onChangeText={(text) => handleChange('confirmPassword', text)}
-              style={styles.input}
-                  placeholderTextColor="#9CA3AF"
-            />
-          </View>
-        </View>
-          </View>
+            {/* Role Info Badge */}
 
-          {/* Date of Birth and Role Selection Row */}
-          <View style={styles.row}>
-            <View style={[styles.inputWrapper, { marginRight: 6 }]}>
-              <Text style={styles.label}>Date of Birth</Text>
-              <TouchableOpacity
-                style={[styles.inputContainer, styles.dateInputContainer]}
-                onPress={() => setShowDatePicker(true)}
-                activeOpacity={0.7}
-              >
-                <Calendar size={20} color="#9CA3AF" style={styles.icon} />
-                <Text style={[styles.dateText, !form.DOB && styles.placeholderText]}>
-                  {form.DOB ? formatDate(form.DOB) : 'Select DOB'}
-                </Text>
-              </TouchableOpacity>
-              {Platform.OS === 'android' && showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="default"
-                  onChange={handleDateChange}
-                  maximumDate={new Date()}
-                />
-              )}
-              {Platform.OS === 'ios' && showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="spinner"
-                  onChange={handleDateChange}
-                  maximumDate={new Date()}
-                />
-              )}
-            </View>
 
-            <View style={[styles.inputWrapper, { marginRight: 0 }]}>
-              <Text style={styles.label}>
-                I want to be a
-                {route?.params?.role && form.user_type && (
-                  <Text style={styles.preSelectedLabel}> (Pre-selected)</Text>
-                )}
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.inputContainer,
-                  form.user_type && styles.inputContainerSelected
-                ]}
-                onPress={() => setShowRoleDropdown(true)}
-                activeOpacity={0.7}
-              >
-                <Users size={20} color="#9CA3AF" style={styles.icon} />
-                <Text style={[
-                  styles.roleDropdownText,
-                  !form.user_type && styles.placeholderText
-                ]}>
-                  {form.user_type === 'seeker'
-                    ? 'Support Seeker'
-                    : form.user_type === 'listener'
-                    ? 'Listener with Empathy'
-                    : 'Select role'}
-                </Text>
-                <ChevronDown size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              {/* Role Dropdown Modal */}
-              <Modal
-                visible={showRoleDropdown}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowRoleDropdown(false)}
-              >
-                <View style={styles.modalOverlay}>
-                  <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                      <Text style={styles.modalTitle}>Select Your Role</Text>
-                      <TouchableOpacity
-                        onPress={() => setShowRoleDropdown(false)}
-                        style={styles.modalCloseButton}
-                      >
-                        <X size={24} color="#111827" />
-                      </TouchableOpacity>
-                    </View>
-                    
-                    <View style={styles.roleOptionsContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.roleOptionItem,
-                          form.user_type === 'seeker' && styles.roleOptionItemSelected
-                        ]}
-                        onPress={() => {
-                          handleChange('user_type', 'seeker');
-                          setShowRoleDropdown(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        {form.user_type === 'seeker' ? (
-                          <View style={styles.radioButtonSelected}>
-                            <View style={styles.radioButtonDot} />
-                          </View>
-                        ) : (
-                          <View style={styles.radioButtonUnselected} />
-                        )}
-                        <View style={styles.roleOptionContent}>
-                          <Text style={styles.roleOptionTitle}>Support Seeker</Text>
-                          <Text style={styles.roleOptionDescription}>
-                            I'm looking for emotional support and guidance
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.roleOptionItem,
-                          form.user_type === 'listener' && styles.roleOptionItemSelected
-                        ]}
-                        onPress={() => {
-                          handleChange('user_type', 'listener');
-                          setShowRoleDropdown(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        {form.user_type === 'listener' ? (
-                          <View style={styles.radioButtonSelected}>
-                            <View style={styles.radioButtonDot} />
-                          </View>
-                        ) : (
-                          <View style={styles.radioButtonUnselected} />
-                        )}
-                        <View style={styles.roleOptionContent}>
-                          <Text style={styles.roleOptionTitle}>Listener with Empathy</Text>
-                          <Text style={styles.roleOptionDescription}>
-                            I want to provide emotional support to others
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
+            {/* Form Fields */}
+            <View style={styles.form}>
+              {/* Full Name and Email Row */}
+              <View style={styles.row}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Full Name</Text>
+                  <View style={styles.inputContainer}>
+                    <User size={20} color="#9CA3AF" style={styles.icon} />
+                    <TextInput
+                      placeholder="Enter your full name"
+                      value={form.full_name}
+                      onChangeText={(text) => handleChange('full_name', text)}
+                      style={styles.input}
+                      placeholderTextColor="#9CA3AF"
+                    />
                   </View>
                 </View>
-              </Modal>
-          </View>
-        </View>
-
-          {/* Preferences - Optional */}
-          <View style={styles.preferencesSection}>
-            <Text style={styles.preferencesTitle}>
-              What areas would you like support with?{' '}
-              <Text style={styles.optionalText}>(Optional)</Text>
-            </Text>
-            {categoriesLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#F97316" />
-                <Text style={styles.loadingText}>Loading categories...</Text>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Email Address</Text>
+                  <View style={styles.inputContainer}>
+                    <Mail size={20} color="#9CA3AF" style={styles.icon} />
+                    <TextInput
+                      placeholder="Enter your email"
+                      value={form.email}
+                      onChangeText={(text) => handleChange('email', text)}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      style={styles.input}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
               </View>
-            ) : categories.length > 0 ? (
-              <View style={styles.inputWrapper}>
-                <TouchableOpacity
-                  style={styles.categoryDropdown}
-                  onPress={() => setShowCategoryDropdown(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.categoryDropdownText,
-                    form.preferences.length === 0 && styles.placeholderText
-                  ]}>
-                    {form.preferences.length === 0
-                      ? 'Select categories (optional)'
-                      : form.preferences.length === 1
-                      ? categories.find(c => c.id === form.preferences[0])?.name || '1 category selected'
-                      : `${form.preferences.length} categories selected`
-                    }
-        </Text>
-                  <ChevronDown size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-                
-                {/* Selected Categories Tags */}
-                {form.preferences.length > 0 && (
-                  <View style={styles.selectedTagsContainer}>
-                    {form.preferences.map((categoryId) => {
-                      const category = categories.find(c => c.id === categoryId);
-                      if (!category) return null;
-                      return (
-                        <View key={categoryId} style={styles.selectedTag}>
-                          <Text style={styles.selectedTagText}>{category.name}</Text>
+
+              {/* Password and Confirm Password Row */}
+              <View style={styles.row}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Password</Text>
+                  <View style={styles.inputContainer}>
+                    <Lock size={20} color="#9CA3AF" style={styles.icon} />
+                    <TextInput
+                      placeholder="Create password"
+                      value={form.password}
+                      secureTextEntry
+                      onChangeText={(text) => handleChange('password', text)}
+                      style={styles.input}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <View style={styles.inputContainer}>
+                    <Lock size={20} color="#9CA3AF" style={styles.icon} />
+                    <TextInput
+                      placeholder="Confirm password"
+                      value={form.confirmPassword}
+                      secureTextEntry
+                      onChangeText={(text) => handleChange('confirmPassword', text)}
+                      style={styles.input}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Date of Birth and Role Selection Row */}
+              <View style={styles.row}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Date of Birth</Text>
+                  <TouchableOpacity
+                    style={[styles.inputContainer, styles.dateInputContainer]}
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Calendar size={20} color="#9CA3AF" style={styles.icon} />
+                    <Text style={[styles.dateText, !form.DOB && styles.placeholderText]}>
+                      {form.DOB ? formatDate(form.DOB) : 'Select DOB'}
+                    </Text>
+                  </TouchableOpacity>
+                  {Platform.OS === 'android' && showDatePicker && (
+                    <DateTimePicker
+                      value={date}
+                      mode="date"
+                      display="default"
+                      onChange={handleDateChange}
+                      maximumDate={new Date()}
+                    />
+                  )}
+                  {Platform.OS === 'ios' && showDatePicker && (
+                    <DateTimePicker
+                      value={date}
+                      mode="date"
+                      display="spinner"
+                      onChange={handleDateChange}
+                      maximumDate={new Date()}
+                    />
+                  )}
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>
+                    I want to be a
+                    {route?.params?.role && form.user_type && (
+                      <Text style={styles.preSelectedLabel}> (Pre-selected)</Text>
+                    )}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.inputContainer,
+                      form.user_type && styles.inputContainerSelected
+                    ]}
+                    onPress={() => setShowRoleDropdown(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Users size={20} color="#9CA3AF" style={styles.icon} />
+                    <Text style={[
+                      styles.roleDropdownText,
+                      !form.user_type && styles.placeholderText
+                    ]}>
+                      {form.user_type === 'seeker'
+                        ? 'Support Seeker'
+                        : form.user_type === 'listener'
+                          ? 'Listener with Empathy'
+                          : 'Select role'}
+                    </Text>
+                    <ChevronDown size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+
+                  {/* Role Dropdown Modal */}
+                  <Modal
+                    visible={showRoleDropdown}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setShowRoleDropdown(false)}
+                  >
+                    <View style={styles.modalOverlay}>
+                      <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                          <Text style={styles.modalTitle}>Select Your Role</Text>
                           <TouchableOpacity
-                            onPress={() => handlePreferenceToggle(categoryId)}
-                            style={styles.tagRemoveButton}
+                            onPress={() => setShowRoleDropdown(false)}
+                            style={styles.modalCloseButton}
                           >
-                            <X size={14} color="#F97316" />
+                            <X size={24} color="#111827" />
                           </TouchableOpacity>
                         </View>
-                      );
-                    })}
-                  </View>
-                )}
 
-                {/* Category Dropdown Modal */}
-                <Modal
-                  visible={showCategoryDropdown}
-                  transparent={true}
-                  animationType="slide"
-                  onRequestClose={() => setShowCategoryDropdown(false)}
-                >
-                  <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                      <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Select Categories</Text>
-                        <TouchableOpacity
-                          onPress={() => setShowCategoryDropdown(false)}
-                          style={styles.modalCloseButton}
-                        >
-                          <X size={24} color="#111827" />
-                        </TouchableOpacity>
-                      </View>
-                      
-                      <ScrollView style={styles.modalScrollView}>
-                        {categories.map((category) => (
+                        <View style={styles.roleOptionsContainer}>
                           <TouchableOpacity
-                            key={category.id}
-                            style={styles.modalCategoryItem}
-                            onPress={() => handlePreferenceToggle(category.id)}
+                            style={[
+                              styles.roleOptionItem,
+                              form.user_type === 'seeker' && styles.roleOptionItemSelected
+                            ]}
+                            onPress={() => {
+                              handleChange('user_type', 'seeker');
+                              setShowRoleDropdown(false);
+                            }}
                             activeOpacity={0.7}
                           >
-              <CheckBox
-                              value={form.preferences.includes(category.id)}
-                              onValueChange={() => handlePreferenceToggle(category.id)}
-                              tintColors={{ true: '#F97316', false: '#9CA3AF' }}
-                            />
-                            <Text style={styles.modalCategoryLabel}>{category.name}</Text>
+                            {form.user_type === 'seeker' ? (
+                              <View style={styles.radioButtonSelected}>
+                                <View style={styles.radioButtonDot} />
+                              </View>
+                            ) : (
+                              <View style={styles.radioButtonUnselected} />
+                            )}
+                            <View style={styles.roleOptionContent}>
+                              <Text style={styles.roleOptionTitle}>Support Seeker</Text>
+                              <Text style={styles.roleOptionDescription}>
+                                I'm looking for emotional support and guidance
+                              </Text>
+                            </View>
                           </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                      
-                      <TouchableOpacity
-                        style={styles.modalDoneButton}
-                        onPress={() => setShowCategoryDropdown(false)}
-                      >
-                        <Text style={styles.modalDoneButtonText}>Done</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </Modal>
-              </View>
-            ) : (
-              <Text style={styles.noCategoriesText}>
-                No categories available at the moment. You can skip this step and add preferences later.
-              </Text>
-            )}
-          </View>
 
-          {/* OTP Section */}
-          {showOTP && (
-            <View style={styles.otpSection}>
-              <View style={styles.otpMessage}>
-                <Text style={styles.otpMessageText}>
-                  📧 OTP has been sent to <Text style={styles.otpEmail}>{form.email}</Text>
-                </Text>
-              </View>
-              
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>Enter OTP</Text>
-                <View style={styles.inputContainer}>
-                  <Smartphone size={20} color="#9CA3AF" style={styles.icon} />
-                  <TextInput
-                    placeholder="Enter 6-digit OTP"
-                    value={form.otp}
-                    onChangeText={(text) => handleChange('otp', text)}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    style={styles.input}
-                    placeholderTextColor="#9CA3AF"
-                  />
+                          <TouchableOpacity
+                            style={[
+                              styles.roleOptionItem,
+                              form.user_type === 'listener' && styles.roleOptionItemSelected
+                            ]}
+                            onPress={() => {
+                              handleChange('user_type', 'listener');
+                              setShowRoleDropdown(false);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            {form.user_type === 'listener' ? (
+                              <View style={styles.radioButtonSelected}>
+                                <View style={styles.radioButtonDot} />
+                              </View>
+                            ) : (
+                              <View style={styles.radioButtonUnselected} />
+                            )}
+                            <View style={styles.roleOptionContent}>
+                              <Text style={styles.roleOptionTitle}>Listener with Empathy</Text>
+                              <Text style={styles.roleOptionDescription}>
+                                I want to provide emotional support to others
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  </Modal>
                 </View>
               </View>
 
-              <View style={styles.otpActions}>
-                <TouchableOpacity
-                  onPress={handleSendOTP}
-                  disabled={otpLoading}
-                  style={styles.resendButton}
-                >
-                  <Text style={styles.resendButtonText}>
-                    {otpLoading ? 'Sending...' : 'Resend OTP'}
+              {/* Preferences - Optional */}
+              <View style={styles.preferencesSection}>
+                <Text style={styles.preferencesTitle}>
+                  What areas would you like support with?{' '}
+                  <Text style={styles.optionalText}>(Optional)</Text>
+                </Text>
+                {categoriesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#F97316" />
+                    <Text style={styles.loadingText}>Loading categories...</Text>
+                  </View>
+                ) : categories.length > 0 ? (
+                  <View style={styles.inputWrapper}>
+                    <TouchableOpacity
+                      style={styles.categoryDropdown}
+                      onPress={() => setShowCategoryDropdown(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.categoryDropdownText,
+                        form.preferences.length === 0 && styles.placeholderText
+                      ]}>
+                        {form.preferences.length === 0
+                          ? 'Select categories (optional)'
+                          : form.preferences.length === 1
+                            ? categories.find(c => c.id === form.preferences[0])?.name || '1 category selected'
+                            : `${form.preferences.length} categories selected`
+                        }
+                      </Text>
+                      <ChevronDown size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+
+                    {/* Selected Categories Tags */}
+                    {form.preferences.length > 0 && (
+                      <View style={styles.selectedTagsContainer}>
+                        {form.preferences.map((categoryId) => {
+                          const category = categories.find(c => c.id === categoryId);
+                          if (!category) return null;
+                          return (
+                            <View key={categoryId} style={styles.selectedTag}>
+                              <Text style={styles.selectedTagText}>{category.name}</Text>
+                              <TouchableOpacity
+                                onPress={() => handlePreferenceToggle(categoryId)}
+                                style={styles.tagRemoveButton}
+                              >
+                                <X size={14} color="#F97316" />
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    )}
+
+                    {/* Category Dropdown Modal */}
+                    <Modal
+                      visible={showCategoryDropdown}
+                      transparent={true}
+                      animationType="slide"
+                      onRequestClose={() => setShowCategoryDropdown(false)}
+                    >
+                      <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                          <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Categories</Text>
+                            <TouchableOpacity
+                              onPress={() => setShowCategoryDropdown(false)}
+                              style={styles.modalCloseButton}
+                            >
+                              <X size={24} color="#111827" />
+                            </TouchableOpacity>
+                          </View>
+
+                          <ScrollView style={styles.modalScrollView}>
+                            {categories.map((category) => (
+                              <TouchableOpacity
+                                key={category.id}
+                                style={styles.modalCategoryItem}
+                                onPress={() => handlePreferenceToggle(category.id)}
+                                activeOpacity={0.7}
+                              >
+                                <CheckBox
+                                  value={form.preferences.includes(category.id)}
+                                  onValueChange={() => handlePreferenceToggle(category.id)}
+                                  tintColors={{ true: '#F97316', false: '#9CA3AF' }}
+                                />
+                                <Text style={styles.modalCategoryLabel}>{category.name}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+
+                          <TouchableOpacity
+                            style={styles.modalDoneButton}
+                            onPress={() => setShowCategoryDropdown(false)}
+                          >
+                            <Text style={styles.modalDoneButtonText}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </Modal>
+                  </View>
+                ) : (
+                  <Text style={styles.noCategoriesText}>
+                    No categories available at the moment. You can skip this step and add preferences later.
                   </Text>
-                </TouchableOpacity>
-                <Text style={styles.otpHint}>Didn't receive? Check spam folder</Text>
+                )}
+              </View>
+
+              {/* OTP Section */}
+              {showOTP && (
+                <View style={styles.otpSection}>
+                  <View style={styles.otpMessage}>
+                    <Text style={styles.otpMessageText}>
+                      📧 OTP has been sent to <Text style={styles.otpEmail}>{form.email}</Text>
+                    </Text>
+                  </View>
+
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.label}>Enter OTP</Text>
+                    <View style={styles.inputContainer}>
+                      <Smartphone size={20} color="#9CA3AF" style={styles.icon} />
+                      <TextInput
+                        placeholder="Enter 6-digit OTP"
+                        value={form.otp}
+                        onChangeText={(text) => handleChange('otp', text)}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        style={styles.input}
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.otpActions}>
+                    <TouchableOpacity
+                      onPress={handleSendOTP}
+                      disabled={otpLoading}
+                      style={styles.resendButton}
+                    >
+                      <Text style={styles.resendButtonText}>
+                        {otpLoading ? 'Sending...' : 'Resend OTP'}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={styles.otpHint}>Didn't receive? Check spam folder</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+
+              {/* Success Message */}
+              {success && (
+                <View style={styles.successContainer}>
+                  <Text style={styles.successText}>{success}</Text>
+                </View>
+              )}
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={isLoading || otpLoading}
+                style={styles.buttonWrapper}
+              >
+                <LinearGradient
+                  colors={['#F97316', '#FBBF24']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.button,
+                    (isLoading || otpLoading) && styles.buttonDisabled
+                  ]}
+                >
+                  {isLoading || otpLoading ? (
+                    <>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <Text style={styles.buttonText}>
+                        {isLoading ? 'Creating Account...' : 'Sending OTP...'}
+                      </Text>
+                    </>
+                  ) : !showOTP ? (
+                    <>
+                      <Text style={styles.buttonText}>Send OTP & Continue</Text>
+                      <View style={styles.buttonIconSpacer} />
+                      <ArrowRight size={20} color="#FFF" />
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.buttonText}>Verify OTP & Sign Up</Text>
+                      <View style={styles.buttonIconSpacer} />
+                      <ArrowRight size={20} color="#FFF" />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Footer Links */}
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                  Already have an account?{' '}
+                  <Text
+                    style={styles.link}
+                    onPress={() => {
+                      if (navigation) {
+                        navigation.navigate('Login');
+                      }
+                    }}
+                  >
+                    Login here
+                  </Text>
+                </Text>
               </View>
             </View>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <View style={styles.successContainer}>
-              <Text style={styles.successText}>{success}</Text>
-        </View>
-          )}
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={isLoading || otpLoading}
-            style={styles.buttonWrapper}
-          >
-            <LinearGradient
-              colors={['#F97316', '#FBBF24']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[
-                styles.button,
-                (isLoading || otpLoading) && styles.buttonDisabled
-              ]}
-            >
-              {isLoading || otpLoading ? (
-                <>
-                  <ActivityIndicator size="small" color="#FFF" />
-                  <Text style={styles.buttonText}>
-                    {isLoading ? 'Creating Account...' : 'Sending OTP...'}
-                  </Text>
-                </>
-              ) : !showOTP ? (
-                <>
-                  <Text style={styles.buttonText}>Send OTP & Continue</Text>
-                  <View style={styles.buttonIconSpacer} />
-                  <ArrowRight size={20} color="#FFF" />
-                </>
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>Verify OTP & Sign Up</Text>
-                  <View style={styles.buttonIconSpacer} />
-                  <ArrowRight size={20} color="#FFF" />
-                </>
-              )}
-            </LinearGradient>
-        </TouchableOpacity>
-
-          {/* Footer Links */}
-          <View style={styles.footer}>
-        <Text style={styles.footerText}>
-              Already have an account?{' '}
-              <Text 
-                style={styles.link}
-                onPress={() => {
-                  if (navigation) {
-                    navigation.navigate('Login');
-                  }
-                }}
-              >
-                Login here
-              </Text>
-        </Text>
           </View>
-        </View>
-      </View>
-    </ScrollView>
+        </ScrollView>
+        </KeyboardAvoidingView>
       </ImageBackground>
     </View>
   );
@@ -754,6 +761,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   gradientOverlay: {
     position: 'absolute',
     left: 0,
@@ -766,8 +776,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 40,
-    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
     position: 'relative',
     zIndex: 1,
   },
@@ -804,7 +814,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     // elevation: 8,
-    width: '100%',  
+    width: '100%',
   },
   roleMessage: {
     flexDirection: 'row',
@@ -877,7 +887,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 16,
   },
   inputWrapper: {
@@ -902,12 +912,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    minHeight: 48,
+    paddingHorizontal: 10,
     height: 48,
-    
+    backgroundColor: '#FFFFFF',
   },
   dateInputContainer: {
     justifyContent: 'center',
@@ -933,7 +940,9 @@ const styles = StyleSheet.create({
     color: '#111827',
     padding: 0,
     margin: 0,
-    minHeight: 20,
+    height: '100%',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   placeholderText: {
     color: '#9CA3AF',
@@ -944,6 +953,8 @@ const styles = StyleSheet.create({
     color: '#111827',
     padding: 0,
     margin: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   preferencesSection: {
     marginTop: 12,
@@ -1209,19 +1220,22 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 16,
     width: '100%',
+    height: Platform.OS === 'ios' ? 60 : 'auto',
+    justifyContent: 'center',
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingVertical: Platform.OS === 'ios' ? 0 : 14,
+    paddingHorizontal: Platform.OS === 'ios' ? 0 : 24,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+    height: Platform.OS === 'ios' ? 50 : 'auto',
   },
   buttonDisabled: {
     opacity: 0.5,

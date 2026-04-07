@@ -4,21 +4,29 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  KeyboardAvoidingView,
   TouchableOpacity,
   TextInput,
   Platform,
   ActivityIndicator,
-  Alert,
   Image,
   Switch,
+  ActionSheetIOS,
 } from 'react-native';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Menu, User, Mail, Camera, Save, Eye, EyeOff, Loader2, AlertCircle, CheckCircle } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserProfile, updateUserProfile, getApiUrl } from '../utils/api';
+import { getUserProfile, updateUserProfile, getApiUrl, logoutUser } from '../utils/api';
+import { CommonActions } from '@react-navigation/native';
+import CustomAlert from '../components/CustomAlert';
+import useAlert from '../hooks/useAlert';
 // Date picker - using text input for simplicity
 
 export default function ProfileScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const [userType, setUserType] = useState('listener');
+
   const [formData, setFormData] = useState({
     full_name: '',
     description: '',
@@ -33,6 +41,7 @@ export default function ProfileScreen({ navigation, route }) {
   const [success, setSuccess] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [profileImageFile, setProfileImageFile] = useState(null);
+  const { alertState, showAlert, hideAlert } = useAlert();
   const [initialData, setInitialData] = useState({});
 
   // Detect user type from AsyncStorage
@@ -102,13 +111,60 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const handleFileChange = async () => {
-    // For React Native, you'd typically use react-native-image-picker
-    // For now, we'll show an alert
-    Alert.alert(
-      'Image Upload',
-      'Image upload functionality requires react-native-image-picker. Please install it to enable image uploads.',
-      [{ text: 'OK' }]
-    );
+    if (!isEditing) return;
+
+    const imagePickerOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 800,
+      maxHeight: 800,
+      includeBase64: false,
+    };
+
+    const openGallery = () => {
+      launchImageLibrary(imagePickerOptions, (response) => {
+        if (response.didCancel || response.errorCode) return;
+        const asset = response.assets?.[0];
+        if (asset) {
+          setProfileImageUrl(asset.uri);
+          setProfileImageFile(asset);
+        }
+      });
+    };
+
+    const openCamera = () => {
+      launchCamera(imagePickerOptions, (response) => {
+        if (response.didCancel || response.errorCode) return;
+        const asset = response.assets?.[0];
+        if (asset) {
+          setProfileImageUrl(asset.uri);
+          setProfileImageFile(asset);
+        }
+      });
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) openCamera();
+          else if (buttonIndex === 2) openGallery();
+        }
+      );
+    } else {
+      showAlert({
+        title: 'Profile Photo',
+        message: 'Choose an option',
+        type: 'info',
+        buttons: [
+          { text: 'Camera', onPress: openCamera },
+          { text: 'Gallery', onPress: openGallery },
+        ],
+      });
+    }
   };
 
   const handleDateInput = (value) => {
@@ -137,6 +193,50 @@ export default function ProfileScreen({ navigation, route }) {
     setIsEditing(false);
     setError(null);
     setSuccess(null);
+  };
+
+  const handleLogout = () => {
+    showAlert({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      type: 'warning',
+      buttons: [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              await logoutUser();
+              await AsyncStorage.removeItem('adminToken');
+              await AsyncStorage.removeItem('elysian_user');
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                })
+              );
+            } catch (error) {
+              console.error('Logout error:', error);
+              await AsyncStorage.removeItem('adminToken');
+              await AsyncStorage.removeItem('elysian_user');
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                })
+              );
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const handleSave = async () => {
@@ -176,15 +276,12 @@ export default function ProfileScreen({ navigation, route }) {
         setIsEditing(false);
         setProfileImageFile(null);
 
-        Alert.alert('Success', 'Profile updated successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Optionally navigate back
-              // navigation.goBack();
-            },
-          },
-        ]);
+        showAlert({
+          title: 'Success',
+          message: 'Profile updated successfully!',
+          type: 'success',
+          buttons: [{ text: 'OK' }],
+        });
       } else {
         setError(response.error || 'Failed to update profile. Please try again.');
       }
@@ -210,18 +307,15 @@ export default function ProfileScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.openDrawer()}
-        activeOpacity={0.7}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Menu size={24} color="#111827" />
-      </TouchableOpacity>
-
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View style={styles.header}>
@@ -414,8 +508,20 @@ export default function ProfileScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
           </View>
+          
+          {/* Logout Button */}
+          {!isEditing && (
+            <TouchableOpacity
+              style={[styles.button, styles.logoutButton]}
+              onPress={handleLogout}
+            >
+              <Text style={styles.logoutButtonText}>Log Out</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
+      <CustomAlert {...alertState} />
     </View>
   );
 }
@@ -448,7 +554,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
     paddingTop: Platform.OS === 'ios' ? 100 : 80,
-    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -680,6 +785,17 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#8B4513',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    marginTop: 20,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  logoutButtonText: {
+    color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -6,12 +6,12 @@ const API_CONFIG = {
 };
 
 // Helper function to get full API URL
-export const getApiUrl = (endpoint) => {
+export const getApiUrl = endpoint => {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
 };
 
 // Get stored token
-export const getToken = async () => { 
+export const getToken = async () => {
   try {
     return await AsyncStorage.getItem('adminToken');
   } catch (error) {
@@ -25,7 +25,7 @@ export const apiCall = async (endpoint, options = {}) => {
     const url = getApiUrl(endpoint);
     const { skipAuth, ...fetchOptions } = options;
     const token = skipAuth ? null : await getToken();
-    
+
     const response = await fetch(url, {
       ...fetchOptions,
       headers: {
@@ -38,7 +38,7 @@ export const apiCall = async (endpoint, options = {}) => {
     // Check if response is JSON before parsing
     const contentType = response.headers.get('content-type');
     let data;
-    
+
     if (contentType && contentType.includes('application/json')) {
       try {
         data = await response.json();
@@ -47,7 +47,7 @@ export const apiCall = async (endpoint, options = {}) => {
         return {
           success: false,
           error: `Invalid JSON response: ${jsonError.message}`,
-          data: null
+          data: null,
         };
       }
     } else {
@@ -55,8 +55,10 @@ export const apiCall = async (endpoint, options = {}) => {
       const text = await response.text();
       return {
         success: false,
-        error: `Server returned non-JSON response (${response.status}): ${text.substring(0, 100)}`,
-        data: null
+        error: `Server returned non-JSON response (${
+          response.status
+        }): ${text.substring(0, 100)}`,
+        data: null,
       };
     }
 
@@ -64,25 +66,25 @@ export const apiCall = async (endpoint, options = {}) => {
       return {
         success: false,
         error: data.message || data.error || `HTTP ${response.status}`,
-        data: data
+        data: data,
       };
     }
 
     return {
       success: true,
       data: data,
-      message: data.message
+      message: data.message,
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error occurred'
+      error: error instanceof Error ? error.message : 'Network error occurred',
     };
   }
 };
 
 // Register user (sends OTP)
-export const registerUser = async (userData) => {
+export const registerUser = async userData => {
   return apiCall('/api/register/', {
     method: 'POST',
     body: JSON.stringify(userData),
@@ -120,27 +122,27 @@ export const getCommunityPosts = async ({ postType, categoryId } = {}) => {
   });
 };
 
-export const createCommunityPost = async (postData) => {
+export const createCommunityPost = async postData => {
   return apiCall('/api/community-posts/', {
     method: 'POST',
     body: JSON.stringify(postData),
   });
 };
 
-export const likeCommunityPost = async (postId) => {
+export const likeCommunityPost = async postId => {
   return apiCall(`/api/community-posts/${postId}/like/`, {
     method: 'POST',
   });
 };
 
-export const unlikeCommunityPost = async (postId) => {
+export const unlikeCommunityPost = async postId => {
   return apiCall(`/api/community-posts/${postId}/like/`, {
     method: 'DELETE',
   });
 };
 
 // Login user
-export const loginUser = async (credentials) => {
+export const loginUser = async credentials => {
   return apiCall('/api/login/', {
     method: 'POST',
     body: JSON.stringify(credentials),
@@ -148,21 +150,55 @@ export const loginUser = async (credentials) => {
   });
 };
 
+// Forgot password - send OTP to email
+export const forgotPassword = async email => {
+  return apiCall('/api/forgot-password/', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    skipAuth: true,
+  });
+};
+
+// Verify forgot password OTP
+export const verifyForgotPasswordOTP = async (email, otp) => {
+  return apiCall('/api/verify-forgot-password-otp/', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+    skipAuth: true,
+  });
+};
+
+// Reset password with OTP verification
+export const resetPassword = async (email, otp, newPassword) => {
+  return apiCall('/api/reset-password/', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp, new_password: newPassword }),
+    skipAuth: true,
+  });
+};
+
+// Logout user
+export const logoutUser = async () => {
+  return apiCall('/api/logout/', {
+    method: 'POST',
+  });
+};
+
 // Get dashboard URL based on user type
-export const getDashboardUrl = (userType) => {
+export const getDashboardUrl = userType => {
   const normalizedType = userType?.toLowerCase()?.trim();
   switch (normalizedType) {
     case 'seeker':
-      return 'SeekerDrawerNavigator';
+      return 'SeekerTabNavigator';
     case 'listener':
-      return 'DrawerNavigator';
+      return 'ListenerTabNavigator';
     default:
-      return 'SeekerDrawerNavigator';
+      return 'SeekerTabNavigator';
   }
 };
 
 // Validation function for user types
-export const isValidUserType = (userType) => {
+export const isValidUserType = userType => {
   const validTypes = ['seeker', 'listener'];
   return validTypes.includes(userType?.toLowerCase()?.trim());
 };
@@ -180,7 +216,7 @@ export const acceptConnection = async (connectionId, action) => {
     method: 'POST',
     body: JSON.stringify({
       connection_id: connectionId,
-      action: action
+      action: action,
     }),
   });
 };
@@ -200,7 +236,7 @@ export const getListenerSessionStats = async () => {
 };
 
 // Start direct chat
-export const startDirectChat = async (recipientId) => {
+export const startDirectChat = async recipientId => {
   return apiCall('/chat/start-direct/', {
     method: 'POST',
     body: JSON.stringify({ recipient_id: recipientId }),
@@ -208,7 +244,7 @@ export const startDirectChat = async (recipientId) => {
 };
 
 // Get messages
-export const getMessages = async (roomId) => {
+export const getMessages = async roomId => {
   return apiCall(`/chat/${roomId}/messages/`, {
     method: 'GET',
   });
@@ -222,7 +258,7 @@ export const connectedListeners = async () => {
 };
 
 // Get listeners by category
-export const listenerCategoryWise = async (categorySlug) => {
+export const listenerCategoryWise = async categorySlug => {
   return apiCall('/api/listenerList/', {
     method: 'POST',
     body: JSON.stringify({ category_id: categorySlug }),
@@ -230,7 +266,7 @@ export const listenerCategoryWise = async (categorySlug) => {
 };
 
 // Send connection request
-export const sendConnectionRequest = async (listenerId) => {
+export const sendConnectionRequest = async listenerId => {
   return apiCall('/api/connection-request/', {
     method: 'POST',
     body: JSON.stringify({ listener_id: listenerId }),
@@ -246,7 +282,7 @@ export const sendMessage = async (roomId, message) => {
 };
 
 // Mark messages as read
-export const markMessagesAsRead = async (roomId) => {
+export const markMessagesAsRead = async roomId => {
   return apiCall(`/chat/${roomId}/mark-read/`, {
     method: 'POST',
   });
@@ -267,11 +303,11 @@ export const getUserProfile = async () => {
 };
 
 // Update user profile
-export const updateUserProfile = async (profileData) => {
+export const updateUserProfile = async profileData => {
   try {
     const token = await getToken();
     const url = getApiUrl('/api/user-profile/');
-    
+
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
@@ -287,22 +323,72 @@ export const updateUserProfile = async (profileData) => {
       return {
         success: false,
         error: data.message || data.error || `HTTP ${response.status}`,
-        data: data
+        data: data,
       };
     }
 
     return {
       success: true,
       data: data,
-      message: data.message
+      message: data.message,
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error occurred'
+      error: error instanceof Error ? error.message : 'Network error occurred',
     };
   }
 };
 
+// --- Notification API Functions ---
 
+// Get notifications list
+export const getNotifications = async ({ type, isRead, page = 1, pageSize = 20 } = {}) => {
+  const params = [];
+  if (type) params.push(`type=${encodeURIComponent(type)}`);
+  if (isRead !== undefined) params.push(`is_read=${isRead}`);
+  params.push(`page=${page}`);
+  params.push(`page_size=${pageSize}`);
+  const queryString = params.length ? `?${params.join('&')}` : '';
+
+  return apiCall(`/api/notifications/${queryString}`, {
+    method: 'GET',
+  });
+};
+
+// Mark a single notification as read
+export const markNotificationRead = async (notificationId) => {
+  return apiCall(`/api/notifications/${notificationId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_read: true }),
+  });
+};
+
+// Mark all notifications as read
+export const markAllNotificationsRead = async () => {
+  return apiCall('/api/notifications/mark-all-read/', {
+    method: 'POST',
+  });
+};
+
+// Get notification statistics
+export const getNotificationStats = async () => {
+  return apiCall('/api/notifications/stats/', {
+    method: 'GET',
+  });
+};
+
+// Get/Update notification settings
+export const getNotificationSettings = async () => {
+  return apiCall('/api/notifications/settings/', {
+    method: 'GET',
+  });
+};
+
+export const updateNotificationSettings = async (settings) => {
+  return apiCall('/api/notifications/settings/', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
+};
 

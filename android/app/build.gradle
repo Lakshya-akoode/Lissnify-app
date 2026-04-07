@@ -71,6 +71,11 @@ def enableProguardInReleaseBuilds = false
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -82,32 +87,30 @@ android {
         applicationId "com.lissnify"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 5
+        versionName "1.0.4"
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
+    release {
+        storeFile file(keystoreProperties['LISSNIFY_RELEASE_STORE_FILE'])
+        storePassword keystoreProperties['LISSNIFY_RELEASE_STORE_PASSWORD']
+        keyAlias keystoreProperties['LISSNIFY_RELEASE_KEY_ALIAS']
+        keyPassword keystoreProperties['LISSNIFY_RELEASE_KEY_PASSWORD']
     }
+}
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-        }
+    signingConfig signingConfigs.release
+    minifyEnabled false
+    shrinkResources false
+}
     }
 }
 

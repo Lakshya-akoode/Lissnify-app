@@ -2,8 +2,12 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Signup from "../screens/Signup";
 import Login from "../screens/Login";
-import DrawerNavigator from "./DrawerNavigator";
-import SeekerDrawerNavigator from "./SeekerDrawerNavigator";
+import ForgotPassword from "../screens/ForgotPassword";
+import ResetPassword from "../screens/ResetPassword";
+import CategoryListeners from "../screens/CategoryListeners";
+import ChatScreen from "../screens/ChatScreen";
+import ListenerTabNavigator from "./ListenerTabNavigator";
+import SeekerTabNavigator from "./SeekerTabNavigator";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,15 +22,25 @@ export const AuthStack = () => {
     >
       <Stack.Screen name="Signup" component={Signup} />
       <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen 
-        name="DrawerNavigator" 
-        component={DrawerNavigator}
+      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+      <Stack.Screen name="ResetPassword" component={ResetPassword} />
+      <Stack.Screen
+        name="ListenerTabNavigator"
+        component={ListenerTabNavigator}
         options={{ gestureEnabled: false }}
       />
-      <Stack.Screen 
-        name="SeekerDrawerNavigator" 
-        component={SeekerDrawerNavigator}
+      <Stack.Screen
+        name="SeekerTabNavigator"
+        component={SeekerTabNavigator}
         options={{ gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="CategoryListeners"
+        component={CategoryListeners}
+      />
+      <Stack.Screen
+        name="ChatScreen"
+        component={ChatScreen}
       />
     </Stack.Navigator>
   );

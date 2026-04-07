@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Image,
   RefreshControl,
-  Alert,
   Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -24,18 +23,24 @@ import {
   User,
   Settings,
   ArrowRight,
-  Menu,
+  Bell,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   connectionList,
   acceptConnection,
   getListenerProfile,
   getListenerSessionStats,
   startDirectChat,
+  getApiUrl,
 } from '../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomAlert from '../components/CustomAlert';
+import useAlert from '../hooks/useAlert';
+import { useNotification } from '../contexts/NotificationContext';
 
 export default function ListenerDashboard({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const [connectedSeekers, setConnectedSeekers] = useState([]);
   const [pendingConnections, setPendingConnections] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +50,8 @@ export default function ListenerDashboard({ navigation, route }) {
   const [sessionStats, setSessionStats] = useState({ total_sessions: 0, time_display: '0m' });
   const [rating, setRating] = useState('0.0');
   const [activeSeekers, setActiveSeekers] = useState(0);
+  const { alertState, showAlert, hideAlert } = useAlert();
+  const { unreadCount, latestNotification, dismissLatest } = useNotification();
 
   useEffect(() => {
     fetchData();
@@ -84,6 +91,7 @@ export default function ListenerDashboard({ navigation, route }) {
           full_name: conn.full_name || 'Unknown',
           role: 'Seeker',
           status: conn.status,
+          profile_image: conn.profile_image || null,
           seeker_profile: {
             s_id: conn.id,
             specialty: 'General Support',
@@ -134,22 +142,23 @@ export default function ListenerDashboard({ navigation, route }) {
           setActiveSeekers((prev) => prev + 1);
         }
 
-        Alert.alert('Success', 'Connection request accepted successfully!');
+        showAlert({ title: 'Success', message: 'Connection request accepted successfully!', type: 'success' });
       } else {
-        Alert.alert('Error', response.error || 'Failed to accept connection request');
+        showAlert({ title: 'Error', message: response.error || 'Failed to accept connection request', type: 'error' });
       }
     } catch (error) {
-      Alert.alert('Error', 'Error accepting connection request');
+      showAlert({ title: 'Error', message: 'Error accepting connection request', type: 'error' });
     } finally {
       setPendingLoading(false);
     }
   };
 
   const handleRejectRequest = async (connectionId) => {
-    Alert.alert(
-      'Reject Request',
-      'Are you sure you want to reject this connection request?',
-      [
+    showAlert({
+      title: 'Reject Request',
+      message: 'Are you sure you want to reject this connection request?',
+      type: 'warning',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Reject',
@@ -163,25 +172,25 @@ export default function ListenerDashboard({ navigation, route }) {
                 setPendingConnections((prev) =>
                   prev.filter((conn) => conn.connection_id !== connectionId)
                 );
-                Alert.alert('Success', 'Connection request rejected');
+                showAlert({ title: 'Success', message: 'Connection request rejected', type: 'success' });
               } else {
-                Alert.alert('Error', response.error || 'Failed to reject connection request');
+                showAlert({ title: 'Error', message: response.error || 'Failed to reject connection request', type: 'error' });
               }
             } catch (error) {
-              Alert.alert('Error', 'Error rejecting connection request');
+              showAlert({ title: 'Error', message: 'Error rejecting connection request', type: 'error' });
             } finally {
               setPendingLoading(false);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleStartChat = async (seeker) => {
     try {
       if (seeker.status !== 'Accepted') {
-        Alert.alert('Error', 'Connection not accepted yet.');
+        showAlert({ title: 'Error', message: 'Connection not accepted yet.', type: 'error' });
         return;
       }
 
@@ -189,7 +198,6 @@ export default function ListenerDashboard({ navigation, route }) {
       const rooms = await startDirectChat(seeker.user_id);
 
       if (rooms.success) {
-        // Navigate to chat screen
         if (navigation) {
           navigation.navigate('Chats', {
             roomId: rooms.data.id,
@@ -200,29 +208,34 @@ export default function ListenerDashboard({ navigation, route }) {
           });
         }
       } else {
-        Alert.alert('Error', 'Failed to start chat');
+        showAlert({ title: 'Error', message: 'Failed to start chat', type: 'error' });
       }
     } catch (error) {
-      Alert.alert('Error', 'Error starting chat');
+      showAlert({ title: 'Error', message: 'Error starting chat', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.removeItem('adminToken');
-          if (navigation) {
-            navigation.replace('Login');
-          }
+    showAlert({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      type: 'warning',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.removeItem('adminToken');
+            if (navigation) {
+              navigation.replace('Login');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const stats = [
@@ -267,41 +280,47 @@ export default function ListenerDashboard({ navigation, route }) {
 
   const renderSeekerCard = (seeker, index) => {
     const avatarInitial = seeker.seeker_profile?.avatar || seeker.full_name?.charAt(0) || 'U';
+    const profileImageUrl = seeker.profile_image
+      ? (seeker.profile_image.startsWith('http') ? seeker.profile_image : getApiUrl(`/${seeker.profile_image}`))
+      : null;
     return (
       <View key={index} style={styles.seekerCard}>
         <LinearGradient
-          colors={['rgba(255, 248, 181, 0.3)', 'rgba(255, 184, 140, 0.3)']}
+          colors={['#FFFFFF', 'rgba(255, 248, 181, 0.15)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.seekerCardGradient}
         >
           <View style={styles.seekerHeader}>
             <View style={styles.avatarWrapper}>
-              <LinearGradient
-                colors={['#CD853F', '#D2691E']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatarContainer}
-              >
-                <Text style={styles.avatarText}>{avatarInitial}</Text>
-              </LinearGradient>
+              {profileImageUrl ? (
+                <Image
+                  source={{ uri: profileImageUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <LinearGradient
+                  colors={['#CD853F', '#D2691E']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatarContainer}
+                >
+                  <Text style={styles.avatarText}>{avatarInitial}</Text>
+                </LinearGradient>
+              )}
               <View style={[styles.statusIndicator, seeker.status === 'Accepted' && styles.statusIndicatorActive]} />
             </View>
             <View style={styles.seekerInfo}>
-              <View style={styles.seekerNameRow}>
-                <Text style={styles.seekerName}>{seeker.full_name}</Text>
+              <Text style={styles.seekerName} numberOfLines={1}>{seeker.full_name}</Text>
+              <View style={styles.seekerMetaRow}>
                 <View style={[styles.statusBadge, seeker.status === 'Accepted' && styles.statusBadgeActive]}>
+                  <View style={[styles.statusDot, seeker.status === 'Accepted' && styles.statusDotActive]} />
                   <Text style={[styles.statusBadgeText, seeker.status === 'Accepted' && styles.statusBadgeTextActive]}>
-                    {seeker.status}
+                    {seeker.status === 'Accepted' ? 'Connected' : seeker.status}
                   </Text>
                 </View>
               </View>
               <Text style={styles.seekerSpecialty}>{seeker.seeker_profile?.specialty || 'General Support'}</Text>
-              <Text style={styles.seekerDescription}>
-                {seeker.status === 'Accepted' ? 'Ready to chat' : 
-                 seeker.status === 'Pending' ? 'Waiting for approval' : 
-                 'Connection required'}
-              </Text>
             </View>
           </View>
           {seeker.status === 'Accepted' ? (
@@ -309,6 +328,7 @@ export default function ListenerDashboard({ navigation, route }) {
               style={styles.messageButton}
               onPress={() => handleStartChat(seeker)}
               disabled={loading}
+              activeOpacity={0.8}
             >
               <LinearGradient
                 colors={['#CD853F', '#D2691E']}
@@ -316,8 +336,9 @@ export default function ListenerDashboard({ navigation, route }) {
                 end={{ x: 1, y: 0 }}
                 style={styles.messageButtonGradient}
               >
-                <MessageCircle size={18} color="#FFF" style={{ marginRight: 8 }} />
-                <Text style={styles.messageButtonText}>Message</Text>
+                <MessageCircle size={16} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={styles.messageButtonText}>Start Conversation</Text>
+                <ArrowRight size={14} color="#FFF" style={{ marginLeft: 8 }} />
               </LinearGradient>
             </TouchableOpacity>
           ) : (
@@ -334,6 +355,9 @@ export default function ListenerDashboard({ navigation, route }) {
 
   const renderPendingRequest = (request, index) => {
     const avatarInitial = request.full_name?.charAt(0) || 'U';
+    const profileImageUrl = request.profile_image
+      ? (request.profile_image.startsWith('http') ? request.profile_image : getApiUrl(`/${request.profile_image}`))
+      : null;
     return (
       <View key={index} style={styles.requestCard}>
         <LinearGradient
@@ -343,14 +367,21 @@ export default function ListenerDashboard({ navigation, route }) {
           style={styles.requestCardGradient}
         >
           <View style={styles.requestHeader}>
-            <LinearGradient
-              colors={['#CD853F', '#D2691E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.requestAvatarContainer}
-            >
-              <Text style={styles.requestAvatarText}>{avatarInitial}</Text>
-            </LinearGradient>
+            {profileImageUrl ? (
+              <Image
+                source={{ uri: profileImageUrl }}
+                style={styles.requestAvatarImage}
+              />
+            ) : (
+              <LinearGradient
+                colors={['#CD853F', '#D2691E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.requestAvatarContainer}
+              >
+                <Text style={styles.requestAvatarText}>{avatarInitial}</Text>
+              </LinearGradient>
+            )}
             <View style={styles.requestInfo}>
               <View style={styles.requestNameRow}>
                 <Text style={styles.requestName}>{request.full_name}</Text>
@@ -394,24 +425,68 @@ export default function ListenerDashboard({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Menu Button */}
+      {/* Notification Bell */}
       <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.openDrawer()}
+        style={[styles.notificationBell, { top: Platform.OS === 'ios' ? 80 : 30 }]}
+        onPress={() => navigation.navigate('Chats')}
         activeOpacity={0.7}
       >
-        <Menu size={24} color="#111827" />
+        <Bell size={22} color="#8B4513" />
+        {unreadCount > 0 && (
+          <View style={styles.notifBadge}>
+            <Text style={styles.notifBadgeText}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
+
+      {/* In-app Notification Toast */}
+      {latestNotification && (
+        <TouchableOpacity
+          style={[styles.notifToast, { top: insets.top + 10 }]}
+          onPress={() => {
+            dismissLatest();
+            if (latestNotification.chat_room_id) {
+              navigation.navigate('Chats', {
+                roomId: latestNotification.chat_room_id,
+                seekerName: latestNotification.sender_name,
+              });
+            }
+          }}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={['#CD853F', '#D2691E']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.notifToastGradient}
+          >
+            <Bell size={18} color="#FFF" />
+            <View style={styles.notifToastContent}>
+              <Text style={styles.notifToastTitle} numberOfLines={1}>
+                {latestNotification.title || 'New Notification'}
+              </Text>
+              <Text style={styles.notifToastMessage} numberOfLines={1}>
+                {latestNotification.message}
+              </Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
+      {/* Menu Button */}
+
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 100 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { marginTop: insets.top + 10 }]}>
           <LinearGradient
-            colors={['#FFF8B5', '#FFB88C']}
+            colors={['#FFF8E1', '#FFE0B2']} // Softer gold/orange gradient
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
@@ -475,12 +550,17 @@ export default function ListenerDashboard({ navigation, route }) {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconContainer}>
-                <Users size={48} color="#8B4513" />
-              </View>
+              <LinearGradient
+                colors={['#FFF8B5', '#FFB88C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.emptyIconContainer}
+              >
+                <Users size={40} color="#8B4513" />
+              </LinearGradient>
               <Text style={styles.emptyStateText}>No connected seekers yet</Text>
               <Text style={styles.emptyStateSubtext}>
-                Accepted connection requests will appear here
+                When seekers connect with you, they will appear here. Accept pending requests above to get started!
               </Text>
             </View>
           )}
@@ -493,6 +573,7 @@ export default function ListenerDashboard({ navigation, route }) {
           </View>
         )}
       </ScrollView>
+      <CustomAlert {...alertState} />
     </View>
   );
 }
@@ -502,9 +583,77 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF8E7',
   },
+  notificationBell: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 1000,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  notifBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  notifToast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 2000,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  notifToastGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  notifToastContent: {
+    flex: 1,
+  },
+  notifToastTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  notifToastMessage: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+  },
   menuButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
+    top: Platform.OS === 'ios' ? 80 : 30,
     left: 16,
     zIndex: 1000,
     width: 44,
@@ -523,7 +672,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 40,
+    // paddingBottom handled inline
   },
   loadingContainer: {
     flex: 1,
@@ -537,61 +686,61 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   header: {
-    marginBottom: 16,
-    marginTop: Platform.OS === 'ios' ? 70 : 60,
+    marginBottom: 24,
     paddingHorizontal: 16,
   },
   headerGradient: {
-    paddingTop: 16,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-   
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    shadowColor: '#CD853F',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#FFF',
   },
   headerContent: {
     alignItems: 'center',
+    width: '100%',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#374151',
     textAlign: 'center',
-    marginBottom: 6,
-    paddingHorizontal: 8,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#4B5563',
+    fontSize: 14,
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 16,
-    paddingHorizontal: 12,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   statsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 24,
+    gap: 12,
   },
   statCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     flex: 1,
-    minWidth: 100,
-    maxWidth: '31%',
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    // elevation: 6,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: '#F3F4F6',
   },
   statCardMargin: {
     marginRight: 12,
@@ -605,7 +754,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 2,
@@ -618,6 +767,7 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 16,
     marginBottom: 16,
+
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -638,45 +788,69 @@ const styles = StyleSheet.create({
     color: '#111827',
     flex: 1,
   },
+  countBadge: {
+    backgroundColor: '#CD853F',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    marginLeft: 8,
+  },
+  countBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   seekersGrid: {
-    // gap handled by marginBottom in seekerCard
+    gap: 12,
   },
   seekerCard: {
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 0,
     width: '100%',
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#CD853F',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
-    // elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 184, 140, 0.2)',
+    borderColor: 'rgba(205, 133, 63, 0.15)',
   },
   seekerCardGradient: {
-    padding: 12,
+    padding: 16,
   },
   seekerHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 14,
   },
   avatarWrapper: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 14,
+    width: 52,
+    height: 52,
   },
   avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: '100%',
+    height: '100%',
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 26,
   },
   avatarText: {
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   statusIndicator: {
     position: 'absolute',
@@ -685,9 +859,10 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#9CA3AF',
-    borderWidth: 2,
+    backgroundColor: '#D1D5DB',
+    borderWidth: 2.5,
     borderColor: '#FFFFFF',
+    zIndex: 1,
   },
   statusIndicatorActive: {
     backgroundColor: '#10B981',
@@ -696,62 +871,67 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  seekerNameRow: {
+  seekerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-    flexWrap: 'wrap',
   },
   seekerName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginRight: 6,
+    marginBottom: 4,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
   statusBadgeActive: {
     backgroundColor: '#D1FAE5',
   },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#9CA3AF',
+    marginRight: 5,
+  },
+  statusDotActive: {
+    backgroundColor: '#10B981',
+  },
   statusBadgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600',
     color: '#6B7280',
   },
   statusBadgeTextActive: {
-    color: '#10B981',
+    color: '#059669',
   },
   seekerSpecialty: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#8B4513',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  seekerDescription: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginBottom: 4,
-    lineHeight: 14,
+    fontWeight: '500',
+    marginTop: 2,
   },
   messageButton: {
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 4,
   },
   messageButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
   },
   messageButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   disabledButton: {
@@ -791,6 +971,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+  },
+  requestAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
   },
   requestAvatarText: {
@@ -868,38 +1054,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyState: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#CD853F',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    // elevation: 6,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 184, 140, 0.2)',
+    borderColor: 'rgba(205, 133, 63, 0.12)',
   },
   emptyIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 248, 181, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
   errorContainer: {
     backgroundColor: '#FEF2F2',

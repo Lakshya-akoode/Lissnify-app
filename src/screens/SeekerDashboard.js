@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   Platform,
   Image
 } from 'react-native';
@@ -21,6 +20,7 @@ import {
   Menu,
   Star,
   ChevronDown,
+  Bell,
 } from 'lucide-react-native';
 import {
   connectedListeners,
@@ -30,7 +30,14 @@ import {
   getApiUrl,
 } from '../utils/api';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CustomAlert from '../components/CustomAlert';
+import useAlert from '../hooks/useAlert';
+import { useNotification } from '../contexts/NotificationContext';
+
 export default function SeekerDashboard({ navigation, route }) {
+  const insets = useSafeAreaInsets();
+
   const [connectedListenersData, setConnectedListenersData] = useState([]);
   const [categoriesData, setCategoriesData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,6 +48,8 @@ export default function SeekerDashboard({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [visibleCategories, setVisibleCategories] = useState(6);
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(false);
+  const { alertState, showAlert, hideAlert } = useAlert();
+  const { unreadCount, latestNotification, dismissLatest } = useNotification();
 
   useEffect(() => {
     fetchData();
@@ -97,7 +106,7 @@ export default function SeekerDashboard({ navigation, route }) {
   const handleChatSelect = async (listener) => {
     try {
       if (listener.status !== 'Accepted') {
-        Alert.alert('Error', 'Connection not accepted yet.');
+        showAlert({ title: 'Error', message: 'Connection not accepted yet.', type: 'error' });
         return;
       }
 
@@ -127,7 +136,7 @@ export default function SeekerDashboard({ navigation, route }) {
         setError('Failed to start chat');
       }
     } catch (error) {
-      Alert.alert('Error', 'Error starting chat');
+      showAlert({ title: 'Error', message: 'Error starting chat', type: 'error' });
     } finally {
       setChatLoading(false);
     }
@@ -207,21 +216,34 @@ export default function SeekerDashboard({ navigation, route }) {
 
   const renderListenerCard = (listener, index) => {
     const avatarInitial = listener.listener_profile?.avatar || listener.full_name?.charAt(0) || 'L';
-    const statusColor = listener.status === 'Accepted' ? '#10B981' : listener.status === 'Pending' ? '#F59E0B' : '#6B7280';
+    const isOnline = listener.is_online || false;
+    const statusColor = listener.status === 'Accepted'
+      ? (isOnline ? '#10B981' : '#9CA3AF')
+      : listener.status === 'Pending' ? '#F59E0B' : '#6B7280';
+    const profileImageUrl = listener.profile_image
+      ? (listener.profile_image.startsWith('http') ? listener.profile_image : getApiUrl(`/${listener.profile_image}`))
+      : null;
 
     return (
       <View key={listener.connection_id || index} style={styles.listenerCard}>
         <View style={styles.listenerHeader}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{avatarInitial}</Text>
-          </View>
+          {profileImageUrl ? (
+            <Image
+              source={{ uri: profileImageUrl }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>{avatarInitial}</Text>
+            </View>
+          )}
           <View style={styles.listenerInfo}>
             <View style={styles.listenerNameRow}>
               <Text style={styles.listenerName}>{listener.full_name}</Text>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
               <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
                 <Text style={[styles.statusText, { color: statusColor }]}>
-                  {listener.status}
+                  {listener.status === 'Accepted' ? (isOnline ? 'Online' : 'Offline') : listener.status}
                 </Text>
               </View>
             </View>
@@ -240,9 +262,10 @@ export default function SeekerDashboard({ navigation, route }) {
               )}
             </View>
             <Text style={styles.listenerStatusText}>
-              {listener.status === 'Accepted' ? 'Ready to chat' :
-                listener.status === 'Pending' ? 'Waiting for approval' :
-                  'Connection required'}
+              {listener.status === 'Accepted'
+                ? (isOnline ? 'Active now — ready to chat' : 'Currently offline')
+                : listener.status === 'Pending' ? 'Waiting for approval'
+                  : 'Connection required'}
             </Text>
           </View>
         </View>
@@ -281,18 +304,62 @@ export default function SeekerDashboard({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Menu Button */}
+      {/* Notification Bell */}
       <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.openDrawer()}
+        style={[styles.notificationBell, { top: Platform.OS === 'ios' ? 60 : 30 }]}
+        onPress={() => navigation.navigate('Chats')}
         activeOpacity={0.7}
       >
-        <Menu size={24} color="#111827" />
+        <Bell size={22} color="#8B4513" />
+        {unreadCount > 0 && (
+          <View style={styles.notifBadge}>
+            <Text style={styles.notifBadgeText}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
+
+      {/* In-app Notification Toast */}
+      {latestNotification && (
+        <TouchableOpacity
+          style={[styles.notifToast, { top: insets.top + 10 }]}
+          onPress={() => {
+            dismissLatest();
+            if (latestNotification.chat_room_id) {
+              navigation.navigate('Chats', {
+                roomId: latestNotification.chat_room_id,
+                listenerName: latestNotification.sender_name,
+              });
+            }
+          }}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={['#CD853F', '#D2691E']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.notifToastGradient}
+          >
+            <Bell size={18} color="#FFF" />
+            <View style={styles.notifToastContent}>
+              <Text style={styles.notifToastTitle} numberOfLines={1}>
+                {latestNotification.title || 'New Notification'}
+              </Text>
+              <Text style={styles.notifToastMessage} numberOfLines={1}>
+                {latestNotification.message}
+              </Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
+      {/* Menu Button */}
+
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 100 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header */}
@@ -431,6 +498,7 @@ export default function SeekerDashboard({ navigation, route }) {
           </View>
         )}
       </ScrollView>
+      <CustomAlert {...alertState} />
     </View>
   );
 }
@@ -440,9 +508,77 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF8E7',
   },
+  notificationBell: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 1000,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  notifBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  notifToast: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 2000,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  notifToastGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  notifToastContent: {
+    flex: 1,
+  },
+  notifToastTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  notifToastMessage: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+  },
   menuButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
+    top: Platform.OS === 'ios' ? 60 : 30,
     left: 16,
     zIndex: 1000,
     width: 40,
@@ -461,7 +597,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 40,
+    // paddingBottom handled inline
   },
   loadingContainer: {
     flex: 1,
@@ -475,12 +611,15 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   header: {
-    marginBottom: 24,
-    marginTop: Platform.OS === 'ios' ? 70 : 60,
+    marginBottom: 0,
+    marginTop: Platform.OS === 'ios' ? 100 : 60,
     paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 20,
   },
   headerGradient: {
-    paddingTop: 20,
+    // paddingTop: 20,
     paddingBottom: 28,
     paddingHorizontal: 20,
     borderRadius: 20,
@@ -492,6 +631,7 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 22,
@@ -541,21 +681,28 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -8,
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    paddingBottom: 8,
   },
   categoryCard: {
     width: '48%',
-    marginHorizontal: '1%',
     marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: Platform.OS === 'ios' ? 16 : 12,
     overflow: 'hidden',
+    flex: 0,
   },
   categoryGradient: {
-    padding: 16,
-    minHeight: 140,
+    padding: Platform.OS === 'ios' ? 16 : 14,
+    paddingVertical: Platform.OS === 'ios' ? 20 : 16,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    flexGrow: 1,
   },
   categoryContent: {
     alignItems: 'center',
+    gap: 8,
+    width: '100%',
   },
   categoryIcon: {
     width: 48,
@@ -567,17 +714,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryName: {
-    fontSize: 16,
+    fontSize: Platform.OS === 'ios' ? 15 : 16,
     fontWeight: '700',
     color: '#111827',
     textAlign: 'center',
     marginBottom: 8,
+    paddingHorizontal: 4,
   },
   categoryDescription: {
-    fontSize: 12,
+    fontSize: Platform.OS === 'ios' ? 13 : 12,
     color: '#4B5563',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: Platform.OS === 'ios' ? 18 : 16,
+    paddingHorizontal: 0,
   },
   loadMoreButton: {
     flexDirection: 'row',
@@ -587,7 +736,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
-    marginTop: 16,
+    marginTop: 8,
     alignSelf: 'center',
   },
   loadMoreButtonText: {
@@ -623,6 +772,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#CD853F',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     marginRight: 12,
   },
   avatarText: {
